@@ -11,4 +11,7 @@ urlpatterns = [
     path('caso/<int:pk>/archivar/', views.archive_case, name='archive_case'),
     path('credencial/<int:pk>/validar/', views.validar_acceso_credencial, name='validar_credencial'),
     path('checkout/<str:plan_key>/', views.checkout_session, name='checkout_session'),
+    path('settings/', views.global_settings, name='global_settings'),
+    path('settings/form/<int:pk>/', views.form_settings, name='form_settings'),
+    path('logout/', views.logout_view, name='logout'),
 ]

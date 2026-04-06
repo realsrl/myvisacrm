@@ -1,23 +1,25 @@
 from django.db import models
 from django.contrib.auth.models import User
-from crm.models import Caso
+from crm.models import Caso, Agencia
 from django_countries.fields import CountryField
 from localflavor.us.models import USStateField
 
 class Formulario(models.Model):
+    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='formularios', null=True)
     nombre = models.CharField(max_length=200, help_text="Ej: Cuestionario Inicial I-130")
     descripcion = models.TextField(blank=True)
     activo = models.BooleanField(default=True)
     creado_el = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.nombre
+        return f"{self.nombre} ({self.agencia.nombre if self.agencia else 'Global'})"
 
     class Meta:
         verbose_name = "Molde de Formulario"
         verbose_name_plural = "Moldes de Formularios"
 
 class Seccion(models.Model):
+    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='secciones_formularios', null=True)
     nombre = models.CharField(max_length=200)
     descripcion = models.TextField(blank=True)
     repetible = models.BooleanField(default=False, help_text="¿Permitir agregar múltiples instancias (ej: empleos)?")

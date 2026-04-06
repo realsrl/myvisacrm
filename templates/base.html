@@ -44,13 +44,20 @@
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     {% if user.is_staff %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'dashboard' %}"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+                        <a class="nav-link px-3" href="{% url 'dashboard' %}"><i class="fa-solid fa-chart-line me-1"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle px-3" href="#" id="funnelDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa-solid fa-filter-list me-1"></i> Embudo
+                        </a>
+                        <ul class="dropdown-menu shadow border-0" aria-labelledby="funnelDropdown">
+                            <li><a class="dropdown-item" href="{% url 'funnel' %}?view=kanban"><i class="fa-solid fa-columns-line me-2 text-primary"></i> Vista Kanban</a></li>
+                            <li><a class="dropdown-item" href="{% url 'funnel' %}?view=rows"><i class="fa-solid fa-grip-lines me-2 text-success"></i> Filas por Tipo</a></li>
+                            <li><a class="dropdown-item" href="{% url 'funnel' %}?view=list"><i class="fa-solid fa-list me-2 text-info"></i> Vista de Lista</a></li>
+                        </ul>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'funnel' %}"><i class="fa-solid fa-filter"></i> Embudo (Kanban)</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/admin/"><i class="fa-solid fa-gear"></i> Admin</a>
+                        <a class="nav-link px-3" href="{% url 'global_settings' %}"><i class="fa-solid fa-sliders me-1"></i> Ajustes</a>
                     </li>
                     {% else %}
                     <li class="nav-item">

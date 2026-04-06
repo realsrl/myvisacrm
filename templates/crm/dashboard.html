@@ -292,7 +292,7 @@
                     <td><span class="badge bg-light text-dark border">{{ c.pk|stringformat:"04d" }}</span></td>
                     <td>
                       <div class="fw-bold text-dark">{{ c.beneficiario_principal.get_full_name|default:c.beneficiario_principal.username }}</div>
-                      <div class="text-muted" style="font-size:0.75rem;">{{ c.titulo }} · {{ c.get_tipo_display }}</div>
+                      <div class="text-muted" style="font-size:0.75rem;">{{ c.titulo }} · {{ c.tipo.nombre }}</div>
                     </td>
                     <td>
                         <span class="text-muted small fw-semibold">{{ c.preparador.get_full_name|default:c.preparador.username }}</span>

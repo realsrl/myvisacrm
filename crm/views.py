@@ -5,7 +5,8 @@ from django.utils import timezone
 from django.contrib import messages
 from .models import (
     Caso, CaseStatus, Actividad, Documento, ActualizacionCliente,
-    MensajeCliente, ConfiguracionMensajes, ConfiguracionDashboard, Credencial
+    MensajeCliente, ConfiguracionMensajes, ConfiguracionDashboard, Credencial,
+    Checklist, CaseChecklist, CaseChecklistItem, TipoCaso, SubTipoCaso, CategoriaDocumento
 )
 from django.contrib.auth.forms import AuthenticationForm
 from .forms import DocumentoClienteForm, MensajeClienteForm, ActualizacionForm, NuevoCasoForm
@@ -45,6 +46,10 @@ def dashboard(request):
             form = AuthenticationForm(request, data=request.POST)
             if form.is_valid():
                 user = form.get_user()
+                if getattr(user.profile, 'is_demo', False):
+                    from django.core.management import call_command
+                    call_command('setup_demo')
+                    messages.info(request, "🛡️ Modo Demo Activado: Los datos se han reseteado para tu exploración. Nada de lo que crees aquí es persistente.")
                 login(request, user)
                 return redirect('dashboard')
         else:
@@ -122,7 +127,8 @@ def dashboard(request):
     if query:
         casos_preparador_qs = casos_preparador_qs.filter(
             Q(titulo__icontains=query) |
-            Q(sub_tipo__icontains=query) |
+            Q(sub_tipo__nombre__icontains=query) |
+            Q(tipo__nombre__icontains=query) |
             Q(beneficiario_principal__first_name__icontains=query) |
             Q(beneficiario_principal__last_name__icontains=query) |
             Q(beneficiario_principal__username__icontains=query) |
@@ -149,14 +155,8 @@ def dashboard(request):
     elif porcentaje_uso >= 80:
         plan_warning = "warning"
 
-    # Información de Demo (Reset automático)
+    # Información de Demo
     is_demo = request.user.profile.is_demo
-    if is_demo:
-        from django.core.management import call_command
-        # Solo resetear si es un acceso normal GET al dashboard (no tras un POST de creación)
-        if request.method == 'GET' and not request.GET.get('success'):
-             call_command('setup_demo')
-             messages.info(request, "🛡️ Modo Demo Activado: Los datos se han reseteado para tu exploración. Nada de lo que crees aquí es persistente.")
 
     # Form for creating new cases
     nuevo_caso_form = NuevoCasoForm(agencia=agencia)
@@ -276,27 +276,39 @@ def funnel_view(request):
 
     tipo_filtro = request.GET.get('tipo', '')
     sub_tipo_filtro = request.GET.get('sub_tipo', '')
+    view_type = request.GET.get('view', 'kanban') # Default to kanban
 
     agencia = request.user.profile.agencia
     estados = CaseStatus.objects.filter(agencia=agencia).order_by('orden')
-    casos_preparador = Caso.objects.filter(agencia=agencia).select_related('status_actual')
+    casos_preparador = Caso.objects.filter(agencia=agencia).select_related('status_actual', 'tipo', 'sub_tipo')
 
     if tipo_filtro:
-        casos_preparador = casos_preparador.filter(tipo=tipo_filtro)
+        casos_preparador = casos_preparador.filter(tipo_id=tipo_filtro)
     if sub_tipo_filtro:
-        casos_preparador = casos_preparador.filter(sub_tipo=sub_tipo_filtro)
+        casos_preparador = casos_preparador.filter(sub_tipo_id=sub_tipo_filtro)
 
+    # Grouping by status for Kanban
     casos_por_estado = {estado: [] for estado in estados}
     for caso in casos_preparador:
-        casos_por_estado[caso.status_actual].append(caso)
+        if caso.status_actual in casos_por_estado:
+            casos_por_estado[caso.status_actual].append(caso)
+
+    # Grouping by Type for Horizontal Swimlanes
+    tipos = TipoCaso.objects.filter(agencia=agencia)
+    casos_por_tipo = {tipo: [] for tipo in tipos}
+    for caso in casos_preparador:
+        if caso.tipo in casos_por_tipo:
+            casos_por_tipo[caso.tipo].append(caso)
 
     context = {
         'estados': estados,
-        'casos_por_estado': casos_por_estado,
+        'casos_por_estado':    casos_por_estado,
+        'casos_por_tipo': casos_por_tipo,
         'tipo_actual': tipo_filtro,
         'sub_tipo_actual': sub_tipo_filtro,
-        'tipos': Caso.TIPO_CHOICES,
-        'sub_tipos': Caso.SUB_TIPO_CHOICES,
+        'view_type': view_type,
+        'tipos': tipos,
+        'sub_tipos': SubTipoCaso.objects.filter(tipo_caso__agencia=agencia),
     }
     return render(request, 'crm/funnel.html', context)
 
@@ -335,7 +347,11 @@ def client_portal(request):
             if doc_form.is_valid():
                 doc = doc_form.save(commit=False)
                 doc.caso = caso_actual
-                doc.categoria = 'CLIENTE'
+                cat_cliente, _ = CategoriaDocumento.objects.get_or_create(
+                    agencia=agencia, 
+                    nombre='Subido por Cliente'
+                )
+                doc.categoria = cat_cliente
                 doc.user_can_view = True
                 doc.save()
                 messages.success(request, '✅ Tu documento fue enviado correctamente al preparador.')
@@ -376,10 +392,11 @@ def client_portal(request):
         'documentos_visibles': documentos_visibles,
         'mensajes_del_caso': mensajes_del_caso,
         'mensajes_periodo': mensajes_periodo,
-        'limite_mensajes': config.limite,
-        'periodo_label': config.get_periodo_display(),
+        'limite_mensajes': config.limite if config else 0,
+        'periodo_label': config.get_periodo_display() if config else 'N/A',
         'puede_enviar_mensaje': puede_enviar_mensaje,
         'respuestas_formularios': caso_actual.respuestas_formularios.all() if caso_actual else [],
+        'categorias_documentos': CategoriaDocumento.objects.filter(agencia=agencia) if agencia else [],
     }
     return render(request, 'crm/portal.html', context)
 
@@ -448,6 +465,32 @@ def case_detail(request, pk):
                 else:
                     messages.warning(request, 'Este formulario ya está asignado a este caso.')
             return redirect('case_detail', pk=pk)
+            
+        elif action == 'assign_checklist':
+            checklist_id = request.POST.get('checklist_id')
+            if checklist_id:
+                checklist = get_object_or_404(Checklist, pk=checklist_id, agencia=agencia)
+                case_checklist = CaseChecklist.objects.create(
+                    caso=caso,
+                    checklist_template=checklist,
+                    nombre=checklist.nombre
+                )
+                for item in checklist.items.all():
+                    CaseChecklistItem.objects.create(
+                        case_checklist=case_checklist,
+                        texto=item.texto,
+                        orden=item.orden
+                    )
+                messages.success(request, f'✅ Checklist "{checklist.nombre}" asignado al caso.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'toggle_checklist_item':
+            item_id = request.POST.get('item_id')
+            if item_id:
+                item = get_object_or_404(CaseChecklistItem, pk=item_id, case_checklist__caso=caso)
+                item.completado = not item.completado
+                item.save()
+            return redirect('case_detail', pk=pk)
         
         elif action == 'toggle_chat':
             caso.chat_habilitado = not caso.chat_habilitado
@@ -478,7 +521,10 @@ def case_detail(request, pk):
             if doc_form.is_valid():
                 doc = doc_form.save(commit=False)
                 doc.caso = caso
-                doc.categoria = request.POST.get('categoria', 'PREPARADOR')
+                cat_id = request.POST.get('categoria')
+                if cat_id:
+                    from .models import CategoriaDocumento
+                    doc.categoria = get_object_or_404(CategoriaDocumento, id=cat_id, agencia=agencia)
                 doc.user_can_view = request.POST.get('user_can_view') == 'on'
                 doc.save()
                 messages.success(request, f'📄 Documento "{doc.nombre_documento}" subido correctamente.')
@@ -506,10 +552,75 @@ def case_detail(request, pk):
                 messages.error(request, 'El título de la tarea es obligatorio.')
             return redirect('case_detail', pk=pk)
 
+        elif action == 'edit_case':
+            nuevo_tipo_id = request.POST.get('tipo_id', '')
+            nuevo_sub_tipo_id = request.POST.get('sub_tipo_id', '')
+            nuevo_preparador_id = request.POST.get('preparador_id', '')
+            nuevo_status_id = request.POST.get('status_id', '')
+
+            if nuevo_tipo_id:
+                caso.tipo_id = nuevo_tipo_id
+            if nuevo_sub_tipo_id:
+                caso.sub_tipo_id = nuevo_sub_tipo_id
+            if nuevo_preparador_id:
+                caso.preparador_id = nuevo_preparador_id
+            if nuevo_status_id:
+                caso.status_actual_id = nuevo_status_id
+            
+            caso.save()
+            messages.success(request, '✅ Detalles del caso actualizados.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'add_derivado':
+            nombre = request.POST.get('nombre', '').strip()
+            apellido = request.POST.get('apellido', '').strip()
+            telefono = request.POST.get('telefono', '').strip()
+            email = request.POST.get('email', '').strip()
+            if nombre and apellido:
+                from .models import Derivado
+                Derivado.objects.create(
+                    caso=caso,
+                    nombre=nombre,
+                    apellido=apellido,
+                    telefono=telefono,
+                    email=email,
+                )
+                messages.success(request, f'👨‍👩‍👧‍👦 Familiar "{nombre} {apellido}" agregado al caso.')
+            else:
+                messages.error(request, 'Nombre y Apellido son obligatorios.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'edit_derivado':
+            derivado_id = request.POST.get('derivado_id')
+            from .models import Derivado
+            derivado = get_object_or_404(Derivado, pk=derivado_id, caso=caso)
+            derivado.nombre = request.POST.get('nombre', '').strip()
+            derivado.apellido = request.POST.get('apellido', '').strip()
+            derivado.telefono = request.POST.get('telefono', '').strip()
+            derivado.email = request.POST.get('email', '').strip()
+            derivado.save()
+            messages.success(request, f'✅ Familiar "{derivado.nombre}" actualizado.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'delete_derivado':
+            derivado_id = request.POST.get('derivado_id')
+            from .models import Derivado
+            derivado = get_object_or_404(Derivado, pk=derivado_id, caso=caso)
+            nombre_del = derivado.nombre
+            derivado.delete()
+            messages.warning(request, f'🗑️ Familiar "{nombre_del}" eliminado del caso.')
+            return redirect('case_detail', pk=pk)
+
     # Marcar mensajes del cliente como leídos
     caso.mensajes.filter(leido=False, remitente=caso.beneficiario_principal).update(leido=True)
 
     act_form = ActualizacionForm()
+
+    from .models import UserProfile, CategoriaDocumento
+    from django.contrib.auth.models import User
+    team_user_ids = UserProfile.objects.filter(agencia=agencia, tipo='MIEMBRO').values_list('user_id', flat=True)
+    preparadores = User.objects.filter(id__in=team_user_ids)
+    estados = CaseStatus.objects.filter(agencia=agencia).order_by('orden')
 
     context = {
         'caso': caso,
@@ -522,8 +633,15 @@ def case_detail(request, pk):
         'mensajes': caso.mensajes.all(),
         'status_choices': Actividad.STATUS_TAREA,
         'act_form': act_form,
-        'formularios_disponibles': Formulario.objects.filter(activo=True),
+        'formularios_disponibles': Formulario.objects.filter(agencia=agencia, activo=True),
         'respuestas_formularios': caso.respuestas_formularios.all(),
+        'checklists_disponibles': Checklist.objects.filter(agencia=agencia),
+        'checklists_asignados': caso.checklists_asignados.all().prefetch_related('items'),
+        'tipos_choices': TipoCaso.objects.filter(agencia=agencia),
+        'sub_tipos_choices': SubTipoCaso.objects.filter(tipo_caso__agencia=agencia),
+        'preparadores': preparadores,
+        'estados': estados,
+        'categorias_documentos': CategoriaDocumento.objects.filter(agencia=agencia),
     }
     return render(request, 'crm/case_detail.html', context)
 
@@ -544,6 +662,16 @@ def archive_case(request, pk):
         return redirect('dashboard')
     
     return render(request, 'crm/archive_confirm.html', {'caso': caso})
+
+
+@login_required
+def logout_view(request):
+    is_demo = getattr(request.user.profile, 'is_demo', False)
+    if is_demo:
+        from django.core.management import call_command
+        call_command('setup_demo')
+    logout(request)
+    return redirect('dashboard')
 
 
 def checkout_session(request, plan_key):
@@ -624,3 +752,289 @@ def validar_acceso_credencial(request, pk):
             return JsonResponse({'status': 'error', 'message': 'Contraseña incorrecta'}, status=403)
     
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+@login_required
+def global_settings(request):
+    """View to manage agency-specific settings: checklists, forms, status, limits and team."""
+    profile = request.user.profile
+    if profile.tipo != 'MIEMBRO':
+        return redirect('client_portal')
+    
+    agencia = profile.agencia
+    
+    # Forms from both apps
+    from .forms import (
+        ChecklistForm, ChecklistItemForm, CaseStatusForm, ConfigMensajesForm, 
+        PreparadorForm, TipoCasoForm, SubTipoCasoForm, CategoriaDocumentoForm
+    )
+    from formularios.forms import FormularioForm, SeccionForm, PreguntaForm
+    from formularios.models import Formulario, Seccion, Pregunta
+    from .models import UserProfile, TipoCaso, SubTipoCaso, CategoriaDocumento
+    
+    # ─────────────────────────────────────────────────────────────────────────────
+    #  HANDLING POST ACTIONS
+    # ─────────────────────────────────────────────────────────────────────────────
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        # --- Checklist ---
+        if action == 'add_checklist':
+            form = ChecklistForm(request.POST)
+            if form.is_valid():
+                checklist = form.save(commit=False)
+                checklist.agencia = agencia
+                checklist.save()
+                messages.success(request, f'✅ Plantilla "{checklist.nombre}" creada.')
+        
+        elif action == 'add_checklist_item':
+            cid = request.POST.get('checklist_id')
+            checklist = get_object_or_404(Checklist, id=cid, agencia=agencia)
+            form = ChecklistItemForm(request.POST)
+            if form.is_valid():
+                item = form.save(commit=False)
+                item.checklist = checklist
+                item.save()
+                messages.success(request, '✅ Ítem agregado a la plantilla.')
+        
+        # --- Case Status ---
+        elif action == 'add_status':
+            form = CaseStatusForm(request.POST)
+            if form.is_valid():
+                status = form.save(commit=False)
+                status.agencia = agencia
+                status.save()
+                messages.success(request, f'✅ Estado "{status.nombre}" agregado.')
+        
+        # --- Config Messages ---
+        elif action == 'update_config_mensajes':
+            config = ConfiguracionMensajes.get_config(agencia)
+            form = ConfigMensajesForm(request.POST, instance=config)
+            if form.is_valid():
+                form.save()
+                messages.success(request, '✅ Configuración de mensajes actualizada.')
+        
+        # --- Team / Preparadores ---
+        elif action == 'add_preparador':
+            form = PreparadorForm(request.POST)
+            if form.is_valid():
+                from django.contrib.auth.models import User
+                u = User.objects.create_user(
+                    username=form.cleaned_data['username'],
+                    email=form.cleaned_data['email'],
+                    password=form.cleaned_data['password'],
+                    first_name=form.cleaned_data['first_name'],
+                    last_name=form.cleaned_data['last_name']
+                )
+                UserProfile.objects.create(
+                    user=u,
+                    agencia=agencia,
+                    tipo='MIEMBRO',
+                    es_admin_agencia=form.cleaned_data['es_admin']
+                )
+                messages.success(request, f'✅ Preparador "{u.username}" registrado.')
+        
+        # --- Forms (formularios app) ---
+        elif action == 'add_formulario':
+            form = FormularioForm(request.POST)
+            if form.is_valid():
+                formulario_obj = form.save(commit=False)
+                formulario_obj.agencia = agencia
+                formulario_obj.save()
+                messages.success(request, '✅ Molde de formulario creado.')
+
+        # --- Case Types ---
+        elif action == 'add_tipo_caso':
+            form = TipoCasoForm(request.POST)
+            if form.is_valid():
+                tc = form.save(commit=False)
+                tc.agencia = agencia
+                tc.save()
+                messages.success(request, f'✅ Tipo de caso "{tc.nombre}" creado.')
+
+        elif action == 'add_sub_tipo_caso':
+            form = SubTipoCasoForm(request.POST, agencia=agencia)
+            if form.is_valid():
+                form.save()
+                messages.success(request, '✅ Sub-tipo de caso creado.')
+
+        elif action == 'add_categoria_documento':
+            form = CategoriaDocumentoForm(request.POST)
+            if form.is_valid():
+                cd = form.save(commit=False)
+                cd.agencia = agencia
+                cd.save()
+                messages.success(request, f'✅ Categoría "{cd.nombre}" creada.')
+
+        elif action == 'delete_categoria_documento':
+            cid = request.POST.get('categoria_id')
+            cd = get_object_or_404(CategoriaDocumento, id=cid, agencia=agencia)
+            nombre_del = cd.nombre
+            cd.delete()
+            messages.warning(request, f'🗑️ Categoría "{nombre_del}" eliminada.')
+
+        elif action == 'edit_categoria_documento':
+            cid = request.POST.get('categoria_id')
+            cd = get_object_or_404(CategoriaDocumento, id=cid, agencia=agencia)
+            cd.nombre = request.POST.get('nombre', cd.nombre).strip()
+            if cd.nombre:
+                cd.save()
+                messages.success(request, f'✅ Categoría "{cd.nombre}" actualizada.')
+
+        elif action == 'edit_preparador':
+            profile_id = request.POST.get('profile_id')
+            p = get_object_or_404(UserProfile, id=profile_id, agencia=agencia)
+            u = p.user
+            u.first_name = request.POST.get('first_name', u.first_name).strip()
+            u.last_name = request.POST.get('last_name', u.last_name).strip()
+            u.email = request.POST.get('email', u.email).strip()
+            p.es_admin_agencia = request.POST.get('es_admin') == 'on'
+            u.save()
+            p.save()
+            messages.success(request, f'✅ Usuario "{u.username}" actualizado.')
+
+        elif action == 'edit_tipo_caso':
+            tid = request.POST.get('tipo_id')
+            tc = get_object_or_404(TipoCaso, id=tid, agencia=agencia)
+            tc.nombre = request.POST.get('nombre', tc.nombre).strip()
+            tc.save()
+            messages.success(request, f'✅ Tipo de caso "{tc.nombre}" actualizado.')
+        
+        elif action == 'edit_sub_tipo_caso':
+            sid = request.POST.get('sub_tipo_id')
+            st = get_object_or_404(SubTipoCaso, id=sid, tipo_caso__agencia=agencia)
+            st.nombre = request.POST.get('nombre', st.nombre).strip()
+            st.save()
+            messages.success(request, f'✅ Sub-tipo "{st.nombre}" actualizado.')
+        
+        elif action == 'delete_tipo_caso':
+            tid = request.POST.get('tipo_id')
+            get_object_or_404(TipoCaso, id=tid, agencia=agencia).delete()
+            messages.warning(request, '🗑️ Tipo de caso eliminado.')
+
+        elif action == 'delete_sub_tipo_caso':
+            sid = request.POST.get('sub_tipo_id')
+            get_object_or_404(SubTipoCaso, id=sid, tipo_caso__agencia=agencia).delete()
+            messages.warning(request, '🗑️ Sub-tipo eliminado.')
+
+        return redirect('global_settings')
+
+    # ─────────────────────────────────────────────────────────────────────────────
+    #  CONTEXT DATA
+    # ─────────────────────────────────────────────────────────────────────────────
+    checklists = Checklist.objects.filter(agencia=agencia).prefetch_related('items')
+    estados = CaseStatus.objects.filter(agencia=agencia).order_by('orden')
+    config_mensajes = ConfiguracionMensajes.get_config(agencia)
+    preparadores = UserProfile.objects.filter(agencia=agencia, tipo='MIEMBRO').select_related('user')
+    moldes_formularios = Formulario.objects.filter(agencia=agencia)
+    categorias_documentos = CategoriaDocumento.objects.filter(agencia=agencia)
+    tipos_casos = TipoCaso.objects.filter(agencia=agencia).prefetch_related('subtipos')
+    
+    context = {
+        'checklists': checklists,
+        'estados': estados,
+        'config_mensajes': config_mensajes,
+        'preparadores': preparadores,
+        'moldes_formularios': moldes_formularios,
+        'tipos_casos': tipos_casos,
+        'categorias_documentos': categorias_documentos,
+        
+        # Forms for modals
+        'checklist_form': ChecklistForm(),
+        'item_form': ChecklistItemForm(),
+        'status_form': CaseStatusForm(),
+        'config_form': ConfigMensajesForm(instance=config_mensajes),
+        'preparador_form': PreparadorForm(),
+        'formulario_form': FormularioForm(),
+        'categoria_form': CategoriaDocumentoForm(),
+        'tipo_caso_form': TipoCasoForm(),
+        'sub_tipo_caso_form': SubTipoCasoForm(agencia=agencia),
+    }
+    
+    return render(request, 'crm/global_settings.html', context)
+
+@login_required
+def form_settings(request, pk):
+    """View to manage a specific form's sections and questions."""
+    profile = request.user.profile
+    if profile.tipo != 'MIEMBRO':
+        return redirect('client_portal')
+    
+    from formularios.models import Formulario, Seccion, Pregunta, FormularioSeccion
+    from formularios.forms import SeccionForm, PreguntaForm, FormularioSeccionForm
+    
+    agencia = profile.agencia
+    formulario = get_object_or_404(Formulario, pk=pk, agencia=agencia)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'add_seccion':
+            form = SeccionForm(request.POST)
+            if form.is_valid():
+                seccion = form.save(commit=False)
+                seccion.agencia = agencia
+                seccion.save()
+                FormularioSeccion.objects.create(formulario=formulario, seccion=seccion, orden=0)
+                messages.success(request, f'✅ Sección "{seccion.nombre}" creada y asignada.')
+        
+        elif action == 'assign_seccion':
+            form = FormularioSeccionForm(request.POST, agencia=agencia)
+            if form.is_valid():
+                fs = form.save(commit=False)
+                fs.formulario = formulario
+                fs.save()
+                messages.success(request, '✅ Sección existente asignada.')
+        
+        elif action == 'edit_seccion':
+            sid = request.POST.get('seccion_id')
+            seccion = get_object_or_404(Seccion, id=sid, agencia=agencia)
+            form = SeccionForm(request.POST, instance=seccion)
+            if form.is_valid():
+                form.save()
+                messages.success(request, f'✅ Sección actualizada.')
+
+        elif action == 'add_pregunta':
+            sid = request.POST.get('seccion_id')
+            seccion = get_object_or_404(Seccion, id=sid, agencia=agencia)
+            form = PreguntaForm(request.POST)
+            if form.is_valid():
+                pregunta = form.save(commit=False)
+                pregunta.seccion = seccion
+                pregunta.save()
+                messages.success(request, '✅ Pregunta agregada a la sección.')
+        
+        elif action == 'edit_pregunta':
+            pid = request.POST.get('pregunta_id')
+            pregunta = get_object_or_404(Pregunta, id=pid, seccion__agencia=agencia)
+            form = PreguntaForm(request.POST, instance=pregunta)
+            if form.is_valid():
+                form.save()
+                messages.success(request, '✅ Pregunta actualizada.')
+
+        elif action == 'delete_pregunta':
+            pid = request.POST.get('pregunta_id')
+            pregunta = get_object_or_404(Pregunta, id=pid, seccion__agencia=agencia)
+            pregunta.delete()
+            messages.warning(request, '🗑️ Pregunta eliminada.')
+
+        elif action == 'delete_seccion':
+            fs_id = request.POST.get('fs_id')
+            fs = get_object_or_404(FormularioSeccion, id=fs_id, formulario=formulario)
+            seccion_nombre = fs.seccion.nombre
+            fs.delete()
+            messages.warning(request, f'🗑️ Sección "{seccion_nombre}" removida del formulario.')
+
+        return redirect('form_settings', pk=pk)
+
+    secciones_del_formulario = FormularioSeccion.objects.filter(formulario=formulario).select_related('seccion')
+    todas_las_secciones = Seccion.objects.filter(agencia=agencia)
+    
+    context = {
+        'formulario': formulario,
+        'secciones_del_formulario': secciones_del_formulario,
+        'todas_las_secciones': todas_las_secciones,
+        'seccion_form': SeccionForm(),
+        'assign_seccion_form': FormularioSeccionForm(agencia=agencia),
+        'pregunta_form': PreguntaForm(),
+    }
+    return render(request, 'crm/form_settings.html', context)

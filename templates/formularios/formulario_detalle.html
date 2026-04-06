@@ -60,7 +60,8 @@
                         <!-- Renderizar instancias existentes (repetibles o no) -->
                         {% for i in "01234567"|make_list %}
                             {% with idx=forloop.counter0 %}
-                                {% if not seccion.repetible and idx == 0 or respuesta.datos|has_data_for_index:seccion.preguntas.first.id|add_index:idx %}
+                                {% with q_id_idx=seccion.preguntas.first.id|add_index:idx %}
+                                {% if not seccion.repetible and idx == 0 or seccion.repetible and idx == 0 or respuesta.datos|has_data_for_index:q_id_idx %}
                                     <div class="instance card mb-3 border-light-subtle bg-light bg-opacity-10 p-3" data-index="{{ idx }}">
                                         {% if seccion.repetible and not readonly %}
                                             <button type="button" class="btn btn-outline-danger btn-sm remove-instance position-absolute top-0 end-0 m-2" title="Borrar esta sección">
@@ -74,6 +75,7 @@
                                         </div>
                                     </div>
                                 {% endif %}
+                                {% endwith %}
                             {% endwith %}
                         {% endfor %}
                     </div>

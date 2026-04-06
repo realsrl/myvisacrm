@@ -1,0 +1,541 @@
+{% extends 'base.html' %}
+{% block title %}Configuración Global | MyVisaCRM{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="fw-bold"><i class="fa-solid fa-gears text-primary me-2"></i> Configuración Global de la Agencia</h2>
+            <p class="text-muted">Gestiona tus plantillas, formularios, estados de casos y equipo desde un solo lugar.</p>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="row">
+        <div class="col-12">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm border-0 rounded-3" role="alert">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <!-- SECCIÓN 1: Checklists y Estados -->
+        <div class="col-xl-6">
+            <!-- Checklists -->
+            <div class="card mb-4 border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0"><i class="fa-solid fa-list-check text-info me-2"></i> Plantillas de Checklists</h5>
+                    <button class="btn btn-sm btn-info text-white rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalChecklist">
+                        <i class="fa-solid fa-plus me-1"></i> Nueva Plantilla
+                    </button>
+                </div>
+                <div class="card-body p-4">
+                    <div class="accordion" id="accordionChecklist">
+                        {% for ck in checklists %}
+                        <div class="accordion-item border-0 mb-2 shadow-sm rounded-3 overflow-hidden">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-light text-dark fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#ck_{{ ck.id }}">
+                                    {{ ck.nombre }} <span class="badge bg-secondary ms-2 rounded-pill">{{ ck.items.count }}</span>
+                                </button>
+                            </h2>
+                            <div id="ck_{{ ck.id }}" class="accordion-collapse collapse" data-bs-parent="#accordionChecklist">
+                                <div class="accordion-body">
+                                    <ul class="list-group list-group-flush small mb-3">
+                                        {% for item in ck.items.all %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <span>{{ item.orden }}. {{ item.texto }}</span>
+                                            <span class="text-muted"><i class="fa-solid fa-grip-lines fa-xs"></i></span>
+                                        </li>
+                                        {% empty %}
+                                        <li class="list-group-item text-muted text-center py-3">Sin ítems definidos.</li>
+                                        {% endfor %}
+                                    </ul>
+                                    <button class="btn btn-sm btn-outline-info w-100" data-bs-toggle="modal" data-bs-target="#modalItem" onclick="document.getElementById('checklist_id_input').value='{{ ck.id }}'">
+                                        <i class="fa-solid fa-plus me-1"></i> Agregar Ítem
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-list-check fa-3x mb-3 opacity-25"></i>
+                            <p>No has creado ninguna plantilla de checklist aún.</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estados de Casos -->
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0"><i class="fa-solid fa-filter text-primary me-2"></i> Estados del Embudo</h5>
+                    <button class="btn btn-sm btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalStatus">
+                        <i class="fa-solid fa-plus me-1"></i> Nuevo Estado
+                    </button>
+                </div>
+                <div class="card-body p-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="bg-light small fw-bold">
+                                <tr>
+                                    <th>Orden</th>
+                                    <th>Nombre</th>
+                                    <th>Color</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody class="small">
+                                {% for st in estados %}
+                                <tr>
+                                    <td class="fw-bold">{{ st.orden }}</td>
+                                    <td><span class="badge rounded-pill px-3" style="background-color: {{ st.color }};">{{ st.nombre }}</span></td>
+                                    <td><code>{{ st.color }}</code></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-light p-1 rounded-circle"><i class="fa-solid fa-pen fa-xs"></i></button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 2: Formularios y Configuración -->
+        <div class="col-xl-6">
+            <!-- Moldes de Formularios -->
+            <div class="card mb-4 border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0"><i class="fa-solid fa-file-signature text-warning me-2"></i> Moldes de Formularios</h5>
+                    <button class="btn btn-sm btn-warning text-dark fw-bold rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalFormulario">
+                        <i class="fa-solid fa-plus me-1"></i> Nuevo Molde
+                    </button>
+                </div>
+                <div class="card-body p-4">
+                    <div class="list-group list-group-flush">
+                        {% for mf in moldes_formularios %}
+                        <div class="list-group-item px-0 d-flex justify-content-between align-items-start border-bottom py-3">
+                            <div>
+                                <h6 class="fw-bold mb-1">{{ mf.nombre }}</h6>
+                                <p class="small text-muted mb-0">{{ mf.descripcion|truncatechars:100 }}</p>
+                                <div class="mt-2 text-muted" style="font-size: 0.7rem;">
+                                    <span class="badge {% if mf.activo %}bg-success{% else %}bg-secondary{% endif %} rounded-pill">{% if mf.activo %}Activo{% else %}Inactivo{% endif %}</span>
+                                    &nbsp;·&nbsp; Creado: {{ mf.creado_el|date:"d/m/Y" }}
+                                </div>
+                            </div>
+                            <div class="btn-group">
+                                <a href="{% url 'form_settings' mf.id %}" class="btn btn-sm btn-outline-warning rounded-pill px-3 shadow-sm pt-1">
+                                    <i class="fa-solid fa-cog me-1"></i> Configurar
+                                </a>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted text-center py-4">No hay moldes de formularios creados.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tipos y Subtipos de Casos -->
+            <div class="card mb-4 border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0"><i class="fa-solid fa-tags text-success me-2"></i> Tipos y Subtipos</h5>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-outline-success rounded-pill px-3 me-2" data-bs-toggle="modal" data-bs-target="#modalTipoCaso">
+                            <i class="fa-solid fa-plus me-1"></i> Nuevo Tipo
+                        </button>
+                        <button class="btn btn-sm btn-success rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalSubTipo">
+                            <i class="fa-solid fa-plus me-1"></i> Nuevo Subtipo
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <div class="accordion" id="accordionTipos">
+                        {% for tc in tipos_casos %}
+                        <div class="accordion-item border-0 mb-2 shadow-sm rounded-3 overflow-hidden">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-light text-dark fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#tc_{{ tc.id }}">
+                                    {{ tc.nombre }} <span class="badge bg-secondary ms-2 rounded-pill">{{ tc.subtipos.count }}</span>
+                                </button>
+                            </h2>
+                            <div id="tc_{{ tc.id }}" class="accordion-collapse collapse" data-bs-parent="#accordionTipos">
+                                <div class="accordion-body">
+                                    <ul class="list-group list-group-flush small">
+                                        <li class="list-group-item bg-light d-flex justify-content-between align-items-center">
+                                            <span class="fw-bold">Gestión de Tipo: {{ tc.nombre }}</span>
+                                            <div class="btn-group">
+                                                <button class="btn btn-xs btn-outline-primary py-0 px-2 rounded-pill me-1" data-bs-toggle="modal" data-bs-target="#modalEditTipo{{ tc.id }}" style="font-size: 0.65rem;">Renombrar</button>
+                                                <form method="post" onsubmit="return confirm('¿Eliminar tipo y todos sus subtipos?');" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="delete_tipo_caso">
+                                                    <input type="hidden" name="tipo_id" value="{{ tc.id }}">
+                                                    <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-2 rounded-pill" style="font-size: 0.65rem;">Eliminar</button>
+                                                </form>
+                                            </div>
+                                        </li>
+                                        {% for st in tc.subtipos.all %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            {{ st.nombre }}
+                                            <div class="btn-group">
+                                                <button class="btn btn-sm btn-link text-primary p-0 me-2" data-bs-toggle="modal" data-bs-target="#modalEditSubTipo{{ st.id }}"><i class="fa-solid fa-pen fa-xs"></i></button>
+                                                <form method="post" onsubmit="return confirm('¿Seguro de eliminar este subtipo?');">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="delete_sub_tipo_caso">
+                                                    <input type="hidden" name="sub_tipo_id" value="{{ st.id }}">
+                                                    <button type="submit" class="btn btn-sm btn-link text-danger p-0"><i class="fa-solid fa-trash-can fa-xs"></i></button>
+                                                </form>
+                                            </div>
+                                        </li>
+
+                                        <!-- Modal Edit SubTipo -->
+                                        <div class="modal fade" id="modalEditSubTipo{{ st.id }}" tabindex="-1">
+                                            <div class="modal-dialog modal-dialog-centered modal-sm">
+                                                <div class="modal-content border-0 shadow rounded-4">
+                                                    <div class="modal-header border-0 pt-3 px-3 pb-0"><h6 class="fw-bold m-0">Editar Subtipo</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                                                    <form method="post">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="action" value="edit_sub_tipo_caso">
+                                                        <input type="hidden" name="sub_tipo_id" value="{{ st.id }}">
+                                                        <div class="modal-body px-3 py-2"><input type="text" name="nombre" class="form-control form-control-sm" value="{{ st.nombre }}" required></div>
+                                                        <div class="modal-footer border-0 p-3 pt-0"><button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Guardar</button></div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% empty %}
+                                        <li class="list-group-item text-muted">Sin subtipos.</li>
+                                        {% endfor %}
+                                    </ul>
+                                    
+                                    <!-- Modal Edit Tipo -->
+                                    <div class="modal fade" id="modalEditTipo{{ tc.id }}" tabindex="-1">
+                                        <div class="modal-dialog modal-dialog-centered modal-sm">
+                                            <div class="modal-content border-0 shadow rounded-4">
+                                                <div class="modal-header border-0 pt-3 px-3 pb-0"><h6 class="fw-bold m-0">Editar Tipo de Caso</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                                                <form method="post">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="edit_tipo_caso">
+                                                    <input type="hidden" name="tipo_id" value="{{ tc.id }}">
+                                                    <div class="modal-body px-3 py-2"><input type="text" name="nombre" class="form-control form-control-sm" value="{{ tc.nombre }}" required></div>
+                                                    <div class="modal-footer border-0 p-3 pt-0"><button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Guardar</button></div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted text-center py-3">No hay tipos de casos definidos.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Categorías de Documentos -->
+            <div class="card mb-4 border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0"><i class="fa-solid fa-folder-tree text-primary me-2"></i> Categorías de Documentos</h5>
+                    <button class="btn btn-sm btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalCategoria">
+                        <i class="fa-solid fa-plus me-1"></i> Nueva Categoría
+                    </button>
+                </div>
+                <div class="card-body p-4">
+                    <div class="list-group list-group-flush small">
+                        {% for cat in categorias_documentos %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span><i class="fa-solid fa-folder me-2 text-muted"></i>{{ cat.nombre }}</span>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-link text-primary p-0 me-2" data-bs-toggle="modal" data-bs-target="#modalEditCategoria{{ cat.id }}"><i class="fa-solid fa-pen fa-xs"></i></button>
+                                <form method="post" onsubmit="return confirm('¿Seguro? Los documentos asociados pueden quedar sin categoría.')">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete_categoria_documento">
+                                    <input type="hidden" name="categoria_id" value="{{ cat.id }}">
+                                    <button type="submit" class="btn btn-sm btn-link text-danger p-0"><i class="fa-solid fa-trash-can fa-xs"></i></button>
+                                </form>
+                            </div>
+
+                            <!-- Modal Edit Categoria -->
+                            <div class="modal fade" id="modalEditCategoria{{ cat.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-dialog-centered modal-sm">
+                                    <div class="modal-content border-0 shadow rounded-4">
+                                        <div class="modal-header border-0 pt-3 px-3 pb-0"><h6 class="fw-bold m-0">Editar Categoría</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                                        <form method="post">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="edit_categoria_documento">
+                                            <input type="hidden" name="categoria_id" value="{{ cat.id }}">
+                                            <div class="modal-body px-3 py-2">
+                                                <input type="text" name="nombre" class="form-control form-control-sm" value="{{ cat.nombre }}" required>
+                                            </div>
+                                            <div class="modal-footer border-0 p-3 pt-0"><button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Actualizar</button></div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted text-center py-3">No hay categorías de documentos definidas.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="card mb-4 border-0 shadow-sm rounded-4 border-start border-info border-4">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-comments text-info me-2"></i> Límites de Mensajes</h5>
+                    <form method="post" class="row align-items-end g-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_config_mensajes">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Cant. Máxima</label>
+                            {{ config_form.limite }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Por Período</label>
+                            {{ config_form.periodo }}
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-info text-white fw-bold w-100">Guardar</button>
+                        </div>
+                    </form>
+                    <p class="small text-muted mt-2 mb-0"><i class="fa-solid fa-circle-info me-1"></i> Controla cuántos mensajes puede enviar el cliente antes de ser bloqueado.</p>
+                </div>
+            </div>
+
+            <!-- Equipo / Preparadores -->
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0"><i class="fa-solid fa-users text-success me-2"></i> Miembros del Equipo</h5>
+                    <button class="btn btn-sm btn-success rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalPreparador">
+                        <i class="fa-solid fa-user-plus me-1"></i> Agregar Miembro
+                    </button>
+                </div>
+                <div class="card-body p-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="bg-light small fw-bold">
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Nombre</th>
+                                    <th>Rol</th>
+                                    <th>Acceso</th>
+                                </tr>
+                            </thead>
+                            <tbody class="small">
+                                {% for prep in preparadores %}
+                                <tr>
+                                    <td class="fw-bold">{{ prep.user.username }}</td>
+                                    <td>{{ prep.user.get_full_name }}</td>
+                                    <td>{% if prep.es_admin_agencia %}<span class="badge bg-danger rounded-pill">Admin Agencia</span>{% else %}<span class="badge bg-secondary rounded-pill">Miembro</span>{% endif %}</td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-primary p-1 rounded-circle me-1" data-bs-toggle="modal" data-bs-target="#modalEditPrep{{ prep.id }}" title="Editar Perfil"><i class="fa-solid fa-user-pen fa-xs"></i></button>
+                                            <button class="btn btn-sm btn-outline-secondary p-1 rounded-circle" title="Restablecer Acceso"><i class="fa-solid fa-key fa-xs"></i></button>
+                                        </div>
+
+                                        <!-- Modal Edit Preparador -->
+                                        <div class="modal fade" id="modalEditPrep{{ prep.id }}" tabindex="-1">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content border-0 shadow rounded-4">
+                                                    <div class="modal-header border-0 pt-4 px-4"><h5 class="fw-bold">Editar Miembro: {{ prep.user.username }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                                                    <form method="post">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="action" value="edit_preparador">
+                                                        <input type="hidden" name="profile_id" value="{{ prep.id }}">
+                                                        <div class="modal-body px-4">
+                                                            <div class="row g-2 mb-3">
+                                                                <div class="col-6"><label class="form-label small fw-bold">Nombre</label><input type="text" name="first_name" class="form-control" value="{{ prep.user.first_name }}"></div>
+                                                                <div class="col-6"><label class="form-label small fw-bold">Apellido</label><input type="text" name="last_name" class="form-control" value="{{ prep.user.last_name }}"></div>
+                                                            </div>
+                                                            <div class="mb-3"><label class="form-label small fw-bold">Email</label><input type="email" name="email" class="form-control" value="{{ prep.user.email }}"></div>
+                                                            <div class="form-check"><input type="checkbox" name="es_admin" class="form-check-input" {% if prep.es_admin_agencia %}checked{% endif %} id="checkAdmin{{ prep.id }}"><label class="form-check-label fw-bold small" for="checkAdmin{{ prep.id }}">¿Es Administrador?</label></div>
+                                                        </div>
+                                                        <div class="modal-footer border-0 pb-4 px-4"><button type="submit" class="btn btn-success fw-bold w-100 rounded-pill">Guardar Cambios</button></div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODALES -->
+
+<!-- Modal Checklist -->
+<div class="modal fade" id="modalChecklist" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pt-4 px-4">
+                <h5 class="fw-bold">Nueva Plantilla de Checklist</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_checklist">
+                <div class="modal-body px-4">
+                    {{ checklist_form.as_p }}
+                </div>
+                <div class="modal-footer border-0 pb-4 px-4">
+                    <button type="submit" class="btn btn-info text-white fw-bold w-100 rounded-pill">Crear Plantilla</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Item Checklist -->
+<div class="modal fade" id="modalItem" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pt-4 px-4">
+                <h5 class="fw-bold">Agregar Ítem a la Plantilla</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_checklist_item">
+                <input type="hidden" name="checklist_id" id="checklist_id_input">
+                <div class="modal-body px-4">
+                    {{ item_form.as_p }}
+                </div>
+                <div class="modal-footer border-0 pb-4 px-4">
+                    <button type="submit" class="btn btn-info text-white fw-bold w-100 rounded-pill">Guardar Ítem</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Status -->
+<div class="modal fade" id="modalStatus" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pt-4 px-4">
+                <h5 class="fw-bold">Nuevo Estado del Embudo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_status">
+                <div class="modal-body px-4">
+                    {{ status_form.as_p }}
+                </div>
+                <div class="modal-footer border-0 pb-4 px-4">
+                    <button type="submit" class="btn btn-primary fw-bold w-100 rounded-pill">Agregar Estado</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Preparador -->
+<div class="modal fade" id="modalPreparador" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pt-4 px-4">
+                <h5 class="fw-bold">Registrar Nuevo Preparador</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_preparador">
+                <div class="modal-body px-4">
+                    <div class="row g-2">
+                        <div class="col-md-6 mb-3"><label class="form-label small fw-bold">Usuario</label>{{ preparador_form.username }}</div>
+                        <div class="col-md-6 mb-3"><label class="form-label small fw-bold">Email</label>{{ preparador_form.email }}</div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-6 mb-3"><label class="form-label small fw-bold">Nombre</label>{{ preparador_form.first_name }}</div>
+                        <div class="col-md-6 mb-3"><label class="form-label small fw-bold">Apellido</label>{{ preparador_form.last_name }}</div>
+                    </div>
+                    <div class="mb-3"><label class="form-label small fw-bold">Contraseña</label>{{ preparador_form.password }}</div>
+                    <div class="form-check">{{ preparador_form.es_admin }}&nbsp;<label class="form-check-label fw-bold small">¿Es Admin de Agencia?</label></div>
+                </div>
+                <div class="modal-footer border-0 pb-4 px-4">
+                    <button type="submit" class="btn btn-success fw-bold w-100 rounded-pill">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Formulario -->
+<div class="modal fade" id="modalFormulario" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pt-4 px-4">
+                <h5 class="fw-bold">Nuevo Molde de Formulario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_formulario">
+                <div class="modal-body px-4">
+                    {{ formulario_form.as_p }}
+                </div>
+                <div class="modal-footer border-0 pb-4 px-4">
+                    <button type="submit" class="btn btn-warning fw-bold w-100 rounded-pill">Crear Molde</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Tipo Caso -->
+<div class="modal fade" id="modalTipoCaso" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pt-4 px-4">
+                <h5 class="fw-bold">Nuevo Tipo de Caso</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_tipo_caso">
+                <div class="modal-body px-4">
+                    {{ tipo_caso_form.as_p }}
+                </div>
+                <div class="modal-footer border-0 pb-4 px-4">
+                    <button type="submit" class="btn btn-success fw-bold w-100 rounded-pill">Crear Tipo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Subtipo Caso -->
+<div class="modal fade" id="modalSubTipo" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pt-4 px-4">
+                <h5 class="fw-bold">Nuevo Subtipo de Caso</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_sub_tipo_caso">
+                <div class="modal-body px-4">
+                    {{ sub_tipo_caso_form.as_p }}
+                </div>
+                <div class="modal-footer border-0 pb-4 px-4">
+                    <button type="submit" class="btn btn-success fw-bold w-100 rounded-pill">Crear Subtipo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

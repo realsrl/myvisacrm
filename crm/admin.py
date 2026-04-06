@@ -1,8 +1,8 @@
 from django.contrib import admin
 from .models import (
-    Caso, CaseStatus, Actividad, Documento, ActualizacionCliente, 
-    MensajeCliente, ConfiguracionMensajes, ConfiguracionDashboard,
-    Derivado, Credencial, Agencia, UserProfile, StripeConfig
+    Derivado, Credencial, Agencia, UserProfile, StripeConfig, CaseStatus, Caso, Actividad, Documento,
+    ActualizacionCliente, ConfiguracionDashboard, ConfiguracionMensajes,
+    Checklist, ChecklistItem, CaseChecklist, CaseChecklistItem
 )
 
 @admin.register(Agencia)
@@ -104,3 +104,25 @@ class StripeConfigAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+class ChecklistItemInline(admin.TabularInline):
+    model = ChecklistItem
+    extra = 3
+
+@admin.register(Checklist)
+class ChecklistAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'agencia', 'creado_el')
+    list_filter = ('agencia',)
+    search_fields = ('nombre', 'agencia__nombre')
+    inlines = [ChecklistItemInline]
+
+class CaseChecklistItemInline(admin.TabularInline):
+    model = CaseChecklistItem
+    extra = 0
+
+@admin.register(CaseChecklist)
+class CaseChecklistAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'caso', 'fecha_asignado')
+    list_filter = ('caso__agencia',)
+    search_fields = ('nombre', 'caso__titulo')
+    inlines = [CaseChecklistItemInline]

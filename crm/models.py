@@ -97,14 +97,25 @@ class CaseStatus(models.Model):
     def __str__(self):
         return f"{self.orden}. {self.nombre} ({self.agencia.nombre if self.agencia else 'Global'})"
 
+class TipoCaso(models.Model):
+    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='tipos_casos')
+    nombre = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.nombre} ({self.agencia.nombre})"
+
+class SubTipoCaso(models.Model):
+    tipo_caso = models.ForeignKey(TipoCaso, on_delete=models.CASCADE, related_name='subtipos')
+    nombre = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.nombre} - {self.tipo_caso.nombre}"
+
 class Caso(models.Model):
-    TIPO_CHOICES = [('TURISTA', 'Turista'), ('INMIGRANTE', 'Inmigrante')]
-    SUB_TIPO_CHOICES = [('AJUSTE', 'Ajuste de Estatus'), ('CONSULAR', 'Proceso Consular')]
-    
     agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='casos', null=True)
     titulo = models.CharField(max_length=200, help_text="Ej: Juan Perez - Residencia")
-    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
-    sub_tipo = models.CharField(max_length=20, choices=SUB_TIPO_CHOICES)
+    tipo = models.ForeignKey(TipoCaso, on_delete=models.SET_NULL, null=True, blank=True)
+    sub_tipo = models.ForeignKey(SubTipoCaso, on_delete=models.SET_NULL, null=True, blank=True)
     chat_habilitado = models.BooleanField(
         default=True,
         help_text="Permite al cliente enviar mensajes al preparador desde su portal"
@@ -215,16 +226,21 @@ class Credencial(models.Model):
         except Exception as e:
             return f"Error de cifrado: {str(e)}"
 
+class CategoriaDocumento(models.Model):
+    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='categorias_documentos')
+    nombre = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.nombre} ({self.agencia.nombre})"
+
+    class Meta:
+        verbose_name = "Categoría de Documento"
+        verbose_name_plural = "Categorías de Documentos"
+
 class Documento(models.Model):
-    CATEGORIAS = [
-        ('CLIENTE', 'Subido por Cliente'),
-        ('PREPARADOR', 'Subido por Preparador'),
-        ('ENTREVISTA', 'Llevar a Entrevista'),
-        ('OTROS', 'Descargables/Otros')
-    ]
     caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name='documentos')
     archivo = models.FileField(upload_to='expedientes/%Y/%m/')
-    categoria = models.CharField(max_length=20, choices=CATEGORIAS)
+    categoria = models.ForeignKey(CategoriaDocumento, on_delete=models.SET_NULL, related_name='documentos', null=True, blank=True)
     nombre_documento = models.CharField(max_length=255)
     detalle = models.TextField(blank=True, null=True, help_text="Mensaje o detalle del documento")
     # Si True, el cliente puede ver este documento en su portal
@@ -341,3 +357,54 @@ class StripeConfig(models.Model):
     @classmethod
     def get_config(cls):
         return cls.objects.first() or cls.objects.create()
+
+class Checklist(models.Model):
+    """Plantilla de checklist creada por una agencia."""
+    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='checklists')
+    nombre = models.CharField(max_length=200)
+    creado_el = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.nombre} ({self.agencia.nombre})"
+
+    class Meta:
+        verbose_name = "Plantilla de Checklist"
+        verbose_name_plural = "Plantillas de Checklists"
+
+class ChecklistItem(models.Model):
+    """Ítem dentro de una plantilla de checklist."""
+    checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE, related_name='items')
+    texto = models.CharField(max_length=500)
+    orden = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['orden']
+        verbose_name = "Ítem de Plantilla"
+        verbose_name_plural = "Ítems de Plantilla"
+
+class CaseChecklist(models.Model):
+    """Checklist específico asignado a un caso."""
+    caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name='checklists_asignados')
+    checklist_template = models.ForeignKey(Checklist, on_delete=models.SET_NULL, null=True, blank=True)
+    nombre = models.CharField(max_length=200)
+    fecha_asignado = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.nombre} - {self.caso.titulo}"
+
+    class Meta:
+        verbose_name = "Checklist Asignado"
+        verbose_name_plural = "Checklists Asignados"
+
+class CaseChecklistItem(models.Model):
+    """Ítem individual dentro de un checklist asignado a un caso."""
+    case_checklist = models.ForeignKey(CaseChecklist, on_delete=models.CASCADE, related_name='items')
+    texto = models.CharField(max_length=500)
+    completado = models.BooleanField(default=False)
+    orden = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['orden']
+        verbose_name = "Ítem de Checklist Asignado"
+        verbose_name_plural = "Ítems de Checklists Asignados"
+

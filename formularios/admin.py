@@ -19,12 +19,14 @@ class PreguntaSueltaInline(admin.TabularInline):
 
 @admin.register(Formulario)
 class FormularioAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'activo', 'creado_el')
+    list_display = ('nombre', 'agencia', 'activo', 'creado_el')
+    list_filter = ('agencia', 'activo')
     inlines = [FormularioSeccionInline, PreguntaSueltaInline]
 
 @admin.register(Seccion)
 class SeccionAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'repetible', 'activo')
+    list_display = ('nombre', 'agencia', 'repetible', 'activo')
+    list_filter = ('agencia',)
     inlines = [PreguntaInline]
 
 @admin.register(Pregunta)

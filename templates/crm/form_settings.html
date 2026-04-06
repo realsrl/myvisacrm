@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+{% block title %}Configurar Formulario | {{ formulario.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <a href="{% url 'global_settings' %}" class="btn btn-sm btn-outline-secondary mb-3"><i class="fa-solid fa-arrow-left me-1"></i> Volver a Ajustes</a>
+            <h2 class="fw-bold"><i class="fa-solid fa-file-signature text-warning me-2"></i> {{ formulario.nombre }}</h2>
+            <p class="text-muted">Gestiona las secciones y preguntas de este molde de formulario.</p>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="row">
+        <div class="col-12">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm border-0 rounded-3" role="alert">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <!-- SECCIONES DEL FORMULARIO -->
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0">Estructura del Formulario</h5>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3 me-2" data-bs-toggle="modal" data-bs-target="#modalAssignSeccion">
+                            <i class="fa-solid fa-link me-1"></i> Asignar Sección Existente
+                        </button>
+                        <button class="btn btn-sm btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalSeccion">
+                            <i class="fa-solid fa-plus me-1"></i> Nueva Sección
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    {% if secciones_del_formulario %}
+                        <div class="accordion" id="accordionSecciones">
+                            {% for fs in secciones_del_formulario %}
+                            <div class="accordion-item border mb-3 rounded-3 overflow-hidden shadow-sm">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#sec_{{ fs.seccion.id }}">
+                                        <span class="badge bg-dark me-2">{{ fs.orden }}</span> {{ fs.seccion.nombre }}
+                                        {% if fs.seccion.repetible %}<span class="badge bg-info ms-2 rounded-pill" style="font-size: 0.6rem;">Repetible</span>{% endif %}
+                                    </button>
+                                </h2>
+                                <div id="sec_{{ fs.seccion.id }}" class="accordion-collapse collapse" data-bs-parent="#accordionSecciones">
+                                    <div class="accordion-body bg-light">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="fw-bold mb-0 text-muted">Preguntas de esta sección</h6>
+                                            <div class="btn-group">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 me-2" data-bs-toggle="modal" data-bs-target="#modalEditSeccion_{{ fs.seccion.id }}">
+                                                    <i class="fa-solid fa-pen me-1"></i> Editar Sección
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 me-2" data-bs-toggle="modal" data-bs-target="#modalPregunta" onclick="document.getElementById('seccion_id_input').value='{{ fs.seccion.id }}'">
+                                                    <i class="fa-solid fa-plus me-1"></i> Agregar Pregunta
+                                                </button>
+                                                <form method="post" class="d-inline" onsubmit="return confirm('¿Estás seguro de remover esta sección de este formulario? (La sección y sus preguntas seguirán existiendo en el sistema)');">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="delete_seccion">
+                                                    <input type="hidden" name="fs_id" value="{{ fs.id }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                                                        <i class="fa-solid fa-trash-can me-1"></i> Remover Sección
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover align-middle bg-white rounded shadow-sm">
+                                                <thead class="small fw-bold bg-light">
+                                                    <tr>
+                                                        <th class="ps-3">Orden</th>
+                                                        <th>Pregunta</th>
+                                                        <th>Tipo</th>
+                                                        <th>Requerida</th>
+                                                        <th class="text-end pe-3">Acciones</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="small">
+                                                    {% for p in fs.seccion.preguntas.all %}
+                                                    <tr>
+                                                        <td class="ps-3 fw-bold">{{ p.orden }}</td>
+                                                        <td>{{ p.texto_pregunta }}</td>
+                                                        <td><span class="badge bg-light text-dark border">{{ p.get_tipo_dato_display }}</span></td>
+                                                        <td>{% if p.es_requerida %}<i class="fa-solid fa-check text-success"></i>{% else %}<i class="fa-solid fa-xmark text-muted"></i>{% endif %}</td>
+                                                        <td class="text-end pe-3">
+                                                            <button type="button" class="btn btn-sm btn-light p-1 rounded-circle" data-bs-toggle="modal" data-bs-target="#modalEditPregunta_{{ p.id }}">
+                                                                <i class="fa-solid fa-pen fa-xs"></i>
+                                                            </button>
+                                                            <form method="post" class="d-inline" onsubmit="return confirm('¿Seguro que deseas eliminar esta pregunta?');">
+                                                                {% csrf_token %}
+                                                                <input type="hidden" name="action" value="delete_pregunta">
+                                                                <input type="hidden" name="pregunta_id" value="{{ p.id }}">
+                                                                <button type="submit" class="btn btn-sm btn-light p-1 rounded-circle text-danger">
+                                                                    <i class="fa-solid fa-trash fa-xs"></i>
+                                                                </button>
+                                                            </form>
+                                                        </td>
+                                                    </tr>
+                                                    {% empty %}
+                                                    <tr>
+                                                        <td colspan="5" class="text-center py-3 text-muted italic">Sin preguntas en esta sección.</td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Modal Edit Sección -->
+                            <div class="modal fade" id="modalEditSeccion_{{ fs.seccion.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content border-0 shadow rounded-4">
+                                        <div class="modal-header border-0 pt-4 px-4">
+                                            <h5 class="fw-bold">Editar Sección</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <form method="post">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="edit_seccion">
+                                            <input type="hidden" name="seccion_id" value="{{ fs.seccion.id }}">
+                                            <div class="modal-body px-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Nombre</label>
+                                                    <input type="text" name="nombre" class="form-control" value="{{ fs.seccion.nombre }}" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Descripción</label>
+                                                    <textarea name="descripcion" class="form-control" rows="2">{{ fs.seccion.descripcion }}</textarea>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="repetible" id="rep_{{ fs.seccion.id }}" {% if fs.seccion.repetible %}checked{% endif %}>
+                                                    <label class="form-check-label" for="rep_{{ fs.seccion.id }}">Repetible</label>
+                                                </div>
+                                                <div class="form-check mt-2">
+                                                    <input class="form-check-input" type="checkbox" name="activo" id="act_{{ fs.seccion.id }}" {% if fs.seccion.activo %}checked{% endif %}>
+                                                    <label class="form-check-label" for="act_{{ fs.seccion.id }}">Activo</label>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer border-0 pb-4 px-4">
+                                                <button type="submit" class="btn btn-primary fw-bold w-100 rounded-pill">Guardar Cambios</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Modales Edit Pregunta -->
+                            {% for p in fs.seccion.preguntas.all %}
+                            <div class="modal fade" id="modalEditPregunta_{{ p.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-dialog-centered modal-lg">
+                                    <div class="modal-content border-0 shadow rounded-4">
+                                        <div class="modal-header border-0 pt-4 px-4">
+                                            <h5 class="fw-bold">Editar Pregunta</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <form method="post">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="edit_pregunta">
+                                            <input type="hidden" name="pregunta_id" value="{{ p.id }}">
+                                            <input type="hidden" name="seccion_id" value="{{ fs.seccion.id }}">
+                                            <div class="modal-body px-4">
+                                                <div class="row">
+                                                    <div class="col-md-12 mb-3">
+                                                        <label class="form-label">Texto de la Pregunta</label>
+                                                        <input type="text" name="texto_pregunta" class="form-control" value="{{ p.texto_pregunta }}" required>
+                                                    </div>
+                                                    <div class="col-md-12 mb-3">
+                                                        <label class="form-label">Ayuda Visual (opcional)</label>
+                                                        <textarea name="ayuda_visual" class="form-control" rows="2">{{ p.ayuda_visual }}</textarea>
+                                                    </div>
+                                                    <div class="col-md-4 mb-3">
+                                                        <label class="form-label">Tipo de Dato</label>
+                                                        <select name="tipo_dato" class="form-select">
+                                                            {% for key, name in p.TIPO_DATO_CHOICES %}
+                                                                <option value="{{ key }}" {% if p.tipo_dato == key %}selected{% endif %}>{{ name }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-4 mb-3">
+                                                        <label class="form-label">Orden</label>
+                                                        <input type="number" name="orden" class="form-control" value="{{ p.orden }}" required>
+                                                    </div>
+                                                    <div class="col-md-4 mb-3 pt-4">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" name="es_requerida" id="req_{{ p.id }}" {% if p.es_requerida %}checked{% endif %}>
+                                                            <label class="form-check-label" for="req_{{ p.id }}">¿Es Requerida?</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-12 mb-3">
+                                                        <label class="form-label">Opciones (separar por comas)</label>
+                                                        <input type="text" name="opciones" class="form-control" value="{{ p.opciones }}">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer border-0 pb-4 px-4">
+                                                <button type="submit" class="btn btn-primary fw-bold w-100 rounded-pill">Guardar Cambios</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5 text-muted bg-light rounded-4">
+                            <i class="fa-solid fa-file-circle-plus fa-3x mb-3 opacity-25"></i>
+                            <p>Este formulario no tiene secciones asignadas todavía.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODALES -->
+
+<!-- Modal Nueva Sección -->
+<div class="modal fade" id="modalSeccion" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pt-4 px-4">
+                <h5 class="fw-bold">Crear y Asignar Nueva Sección</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_seccion">
+                <div class="modal-body px-4">
+                    {{ seccion_form.as_p }}
+                </div>
+                <div class="modal-footer border-0 pb-4 px-4">
+                    <button type="submit" class="btn btn-primary fw-bold w-100 rounded-pill">Crear Sección</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Asignar Sección Existente -->
+<div class="modal fade" id="modalAssignSeccion" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pt-4 px-4">
+                <h5 class="fw-bold">Asignar Sección Existente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="assign_seccion">
+                <div class="modal-body px-4">
+                    <p class="small text-muted">Selecciona una sección ya creada para reutilizarla en este formulario.</p>
+                    {{ assign_seccion_form.as_p }}
+                </div>
+                <div class="modal-footer border-0 pb-4 px-4">
+                    <button type="submit" class="btn btn-outline-primary fw-bold w-100 rounded-pill">Asignar Sección</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nueva Pregunta -->
+<div class="modal fade" id="modalPregunta" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pt-4 px-4">
+                <h5 class="fw-bold">Agregar Pregunta a la Sección</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_pregunta">
+                <input type="hidden" name="seccion_id" id="seccion_id_input">
+                <div class="modal-body px-4">
+                    <div class="row">
+                        <div class="col-md-12 mb-3">{{ pregunta_form.texto_pregunta.label_tag }}{{ pregunta_form.texto_pregunta }}</div>
+                        <div class="col-md-12 mb-3">{{ pregunta_form.ayuda_visual.label_tag }}{{ pregunta_form.ayuda_visual }}</div>
+                        <div class="col-md-4 mb-3">{{ pregunta_form.tipo_dato.label_tag }}{{ pregunta_form.tipo_dato }}</div>
+                        <div class="col-md-4 mb-3">{{ pregunta_form.orden.label_tag }}{{ pregunta_form.orden }}</div>
+                        <div class="col-md-4 mb-3 pt-4"><div class="form-check">{{ pregunta_form.es_requerida }} {{ pregunta_form.es_requerida.label_tag }}</div></div>
+                        <div class="col-md-12 mb-3">{{ pregunta_form.opciones.label_tag }}{{ pregunta_form.opciones }}</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pb-4 px-4">
+                    <button type="submit" class="btn btn-success fw-bold w-100 rounded-pill">Guardar Pregunta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

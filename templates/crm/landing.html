@@ -72,7 +72,7 @@
                     </p>
                     <div class="d-flex flex-wrap gap-4 justify-content-center mb-5 mb-lg-0">
                         <button type="button" class="btn btn-primary-custom btn-lg px-5 py-3 fs-5" data-bs-toggle="modal" data-bs-target="#loginModal">
-                            <span data-es>Comenzar ahora</span><span data-en>Get Started</span>
+                            <span data-es>Quiero Probar</span><span data-en>Try it Out</span>
                         </button>
                         <a href="https://wa.me/13476715112" class="btn btn-glass btn-lg px-4 py-3 border shadow-sm fs-5">
                             <i class="fa-brands fa-whatsapp me-2 text-success h4 mb-0"></i>
@@ -88,6 +88,29 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </section>
+
+    <!-- DEMO CREDENTIALS BANNER -->
+    <section class="py-4 bg-dark text-white border-bottom border-primary border-4 text-center">
+        <div class="container">
+            <p class="mb-2 lead fw-bold">
+                <i class="fa-solid fa-vial-circle-check text-warning me-2"></i> 
+                <span data-es>¿Quieres probar la interfaz y las funcionalidades? Usa nuestra cuenta de prueba:</span>
+                <span data-en>Want to test the interface and features? Use our demo account:</span>
+            </p>
+            <div class="d-flex flex-wrap justify-content-center gap-4 mt-3">
+                <div class="bg-secondary bg-opacity-50 px-4 py-2 rounded-pill">
+                    <span class="text-white-50 me-2"><span data-es>Usuario:</span><span data-en>Username:</span></span>
+                    <strong class="text-warning">agency</strong> 
+                    <span class="text-white-50 mx-2">|</span>
+                    <span class="text-white-50 me-2"><span data-es>Contraseña:</span><span data-en>Password:</span></span>
+                    <strong class="text-warning">agency123</strong>
+                </div>
+            </div>
+            <button type="button" class="btn btn-primary-custom btn-sm mt-3 fw-bold px-4 shadow" data-bs-toggle="modal" data-bs-target="#loginModal">
+                <span data-es>Ingresar al Demo</span><span data-en>Enter Demo</span>
+            </button>
         </div>
     </section>
 
@@ -211,12 +234,16 @@
                     <h3 class="fw-bold mb-0"><span data-es>Acceso MyVisaCRM</span><span data-en>Access MyVisaCRM</span></h3>
                 </div>
                 <div class="modal-body p-4 bg-light">
+                    <p class="text-center text-muted small mb-4">
+                        <span data-es><strong>Usuario de prueba:</strong> agency &nbsp;|&nbsp; <strong>Pass:</strong> agency123<br><br>ó<br><br>ingresa tu usuario y contraseña para ir a tu cuenta.</span>
+                        <span data-en><strong>Test user:</strong> agency &nbsp;|&nbsp; <strong>Pass:</strong> agency123<br><br>or<br><br>enter your username and password to access your account.</span>
+                    </p>
                     <form method="post" action="">
                         {% csrf_token %}
                         {{ form|crispy }}
                         <div class="d-grid mt-4">
                             <button type="submit" class="btn btn-primary-custom py-3">
-                                <span data-es>Acceder ahora</span><span data-en>Access Now</span>
+                                <span data-es>¡Siiii, quiero probar!</span><span data-en>Yes, I want to try it!</span>
                             </button>
                         </div>
                     </form>
@@ -236,5 +263,18 @@
     <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'crm/landing.js' %}"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var loginModal = document.getElementById('loginModal');
+        if (loginModal) {
+            loginModal.addEventListener('show.bs.modal', function () {
+                var userInput = document.getElementById('id_username');
+                var passInput = document.getElementById('id_password');
+                if (userInput && !userInput.value) userInput.value = 'agency';
+                if (passInput && !passInput.value) passInput.value = 'agency123';
+            });
+        }
+    });
+    </script>
 </body>
 </html>

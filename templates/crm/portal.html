@@ -185,7 +185,7 @@
         {% if documentos_visibles %}
           <div class="row g-3">
             {% for doc in documentos_visibles %}
-              {% if doc.user_can_view or doc.categoria == 'CLIENTE' %}
+              {% if doc.user_can_view or doc.categoria.nombre == 'Subido por Cliente' %}
               <div class="col-md-6 col-lg-4 col-xl-3">
                 <div class="border rounded-4 p-3 bg-white h-100 d-flex align-items-center gap-3 hover-lift shadow-sm">
                   <div class="flex-shrink-0">
@@ -285,7 +285,9 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body px-4 py-3">
-          {{ doc_form|crispy }}
+          {{ doc_form.nombre_documento|as_crispy_field }}
+          {{ doc_form.detalle|as_crispy_field }}
+          {{ doc_form.archivo|as_crispy_field }}
         </div>
         <div class="modal-footer border-0 pt-0 pb-4 px-4">
           <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>

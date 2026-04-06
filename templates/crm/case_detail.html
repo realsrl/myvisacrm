@@ -67,10 +67,18 @@
     {# Info General #}
     <div class="card border-0 shadow-sm rounded-4 mb-3">
       <div class="card-body p-3">
-        <h6 class="fw-bold text-uppercase text-muted small mb-3 letter-spacing">Información</h6>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-bold text-uppercase text-muted small mb-0 letter-spacing">Información</h6>
+          {% if not esta_archivado %}
+          <button class="btn btn-sm btn-light p-1 text-primary rounded-circle" data-bs-toggle="modal" data-bs-target="#editCaseModal" title="Editar Detalles">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          {% endif %}
+        </div>
         <div class="d-flex flex-column gap-2 small">
-          <div><span class="text-muted">Tipo:</span> <strong>{{ caso.get_tipo_display }}</strong></div>
-          <div><span class="text-muted">Sub-tipo:</span> <strong>{{ caso.get_sub_tipo_display }}</strong></div>
+          <div><span class="text-muted">Status:</span> <strong>{{ caso.status_actual.nombre }}</strong></div>
+          <div><span class="text-muted">Tipo:</span> <strong>{{ caso.tipo.nombre }}</strong></div>
+          <div><span class="text-muted">Sub-tipo:</span> <strong>{{ caso.sub_tipo.nombre }}</strong></div>
           <div><span class="text-muted">Preparador:</span> <strong>{{ caso.preparador.get_full_name|default:caso.preparador.username }}</strong></div>
           <div><span class="text-muted">Última mod:</span> <strong>{{ caso.ultima_modificacion|date:"d/m/Y H:i" }}</strong></div>
           <hr class="my-2 opacity-10">
@@ -102,14 +110,69 @@
               <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white flex-shrink-0 me-2" style="width:30px;height:30px;font-size:.7rem;">
                 {{ f.nombre|first }}{{ f.apellido|first }}
               </div>
-              <div>
+              <div class="flex-grow-1">
                 <div class="fw-semibold">{{ f.nombre }} {{ f.apellido }}</div>
                 <div class="text-muted">{{ f.telefono|default:f.email|default:"Sin contacto" }}</div>
               </div>
+              {% if not esta_archivado %}
+              <div class="btn-group">
+                  <button type="button" class="btn btn-sm btn-link text-primary p-1" data-bs-toggle="modal" data-bs-target="#editDerivadoModal{{ f.pk }}" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                  <form method="post" onsubmit="return confirm('¿Seguro de eliminar este familiar?');" class="d-inline m-0 p-0">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_derivado">
+                    <input type="hidden" name="derivado_id" value="{{ f.pk }}">
+                    <button type="submit" class="btn btn-sm btn-link text-danger p-1" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                  </form>
+              </div>
+              
+              <!-- Modal Edit Familiar -->
+              <div class="modal fade" id="editDerivadoModal{{ f.pk }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-sm modal-dialog-centered">
+                  <div class="modal-content rounded-4 border-0 shadow">
+                    <div class="modal-header border-0 pb-0 pt-3 px-3">
+                      <h6 class="modal-title fw-bold">Editar Familiar</h6>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form method="post">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="edit_derivado">
+                      <input type="hidden" name="derivado_id" value="{{ f.pk }}">
+                      <div class="modal-body px-3 py-2">
+                        <div class="mb-2"><input type="text" name="nombre" class="form-control form-control-sm" value="{{ f.nombre }}" placeholder="Nombre" required></div>
+                        <div class="mb-2"><input type="text" name="apellido" class="form-control form-control-sm" value="{{ f.apellido }}" placeholder="Apellido" required></div>
+                        <div class="mb-2"><input type="text" name="telefono" class="form-control form-control-sm" value="{{ f.telefono }}" placeholder="Teléfono"></div>
+                        <div class="mb-2"><input type="email" name="email" class="form-control form-control-sm" value="{{ f.email }}" placeholder="Email"></div>
+                      </div>
+                      <div class="modal-footer border-0 p-3 pt-0">
+                        <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Guardar Cambios</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
             </div>
           {% endfor %}
         {% else %}
-          <p class="text-muted small mb-0">Sin familiares derivados.</p>
+          <p class="text-muted small mb-0 p-2 text-center text-opacity-50">Sin familiares derivados.</p>
+        {% endif %}
+
+        {% if not esta_archivado %}
+        <hr class="my-2 opacity-10">
+        <button class="btn btn-sm btn-outline-secondary w-100 py-1" type="button" data-bs-toggle="collapse" data-bs-target="#addDerivadoForm">
+          <i class="fa-solid fa-plus me-1"></i> Agregar Familiar
+        </button>
+        <div class="collapse mt-2" id="addDerivadoForm">
+          <form method="post" class="small p-2 border rounded bg-light">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_derivado">
+            <div class="mb-2"><input type="text" name="nombre" class="form-control form-control-sm" placeholder="Nombre" required></div>
+            <div class="mb-2"><input type="text" name="apellido" class="form-control form-control-sm" placeholder="Apellido" required></div>
+            <div class="mb-2"><input type="text" name="telefono" class="form-control form-control-sm" placeholder="Teléfono"></div>
+            <div class="mb-2"><input type="email" name="email" class="form-control form-control-sm" placeholder="Email"></div>
+            <button type="submit" class="btn btn-secondary btn-sm w-100 fw-bold">Guardar Familiar</button>
+          </form>
+        </div>
         {% endif %}
       </div>
     </div>
@@ -284,6 +347,58 @@
         {% endif %}
       </div>
     </div>
+
+    {# Checklists #}
+    <div class="card border-0 shadow-sm rounded-4 mt-4 mb-4">
+      <div class="card-header bg-white border-0 pt-3 pb-0 px-4 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0"><i class="fa-solid fa-list-check text-info me-2"></i> Checklists Asignados</h6>
+      </div>
+      <div class="card-body px-4 pb-4">
+        {% if not esta_archivado %}
+        <form method="post" class="mb-4">
+           {% csrf_token %}
+           <input type="hidden" name="action" value="assign_checklist">
+           <div class="input-group input-group-sm">
+             <select name="checklist_id" class="form-select" required>
+               <option value="">-- Asignar Checklist --</option>
+               {% for c in checklists_disponibles %}
+                 <option value="{{ c.pk }}">{{ c.nombre }}</option>
+               {% endfor %}
+             </select>
+             <button type="submit" class="btn btn-info text-white btn-sm fw-bold px-3">Asignar</button>
+           </div>
+        </form>
+        {% endif %}
+
+        {% if checklists_asignados %}
+          <div class="d-flex flex-column gap-3">
+             {% for ca in checklists_asignados %}
+               <div class="border rounded-3 p-3 bg-light">
+                 <h6 class="fw-bold small mb-3 text-primary">{{ ca.nombre }} <span class="text-muted fw-normal" style="font-size:0.7rem;">({{ ca.fecha_asignado|date:"d/m/Y" }})</span></h6>
+                 {% for item in ca.items.all %}
+                 <form method="post" class="d-flex align-items-center mb-2">
+                   {% csrf_token %}
+                   <input type="hidden" name="action" value="toggle_checklist_item">
+                   <input type="hidden" name="item_id" value="{{ item.pk }}">
+                   <div class="form-check small p-0 m-0 d-flex align-items-center">
+                     <input class="form-check-input ms-0 me-2" type="checkbox" id="chk_{{ item.pk }}" {% if item.completado %}checked{% endif %} onChange="this.form.submit()" {% if esta_archivado %}disabled{% endif %}>
+                     <label class="form-check-label {% if item.completado %}text-muted text-decoration-line-through{% else %}fw-semibold{% endif %}" for="chk_{{ item.pk }}" style="cursor:pointer;" onclick="if(!document.getElementById('chk_{{ item.pk }}').disabled) { document.getElementById('chk_{{ item.pk }}').click(); }">
+                       {{ item.texto }}
+                     </label>
+                   </div>
+                 </form>
+                 {% empty %}
+                   <p class="text-muted small mb-0">Sin ítems.</p>
+                 {% endfor %}
+               </div>
+             {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-muted small mb-0 p-2 text-center text-opacity-50"><i class="fa-solid fa-list-check me-2"></i>Sin checklists asignados.</p>
+        {% endif %}
+      </div>
+    </div>
+
   </div>
 
   {# ── COLUMNA DERECHA: Actualizaciones + Documentos + Chat ────────── #}
@@ -331,7 +446,7 @@
                 </div>
                 <div class="flex-grow-1 text-truncate pe-2">
                   <div class="fw-bold text-truncate">{{ doc.nombre_documento }}</div>
-                  <div class="text-muted" style="font-size:0.65rem;">{{ doc.get_categoria_display }} · {{ doc.fecha_subida|date:"d/m/y" }}</div>
+                  <div class="text-muted" style="font-size:0.65rem;">{{ doc.categoria.nombre|default:"Sin Categoría" }} · {{ doc.fecha_subida|date:"d/m/y" }}</div>
                 </div>
                 <a href="{{ doc.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-success p-1 rounded-circle"><i class="fa-solid fa-download fa-xs p-1"></i></a>
               </div>
@@ -357,9 +472,9 @@
             <div class="mb-2">
               <label class="form-label fw-bold">Categoría</label>
               <select name="categoria" class="form-select form-select-sm">
-                <option value="PREPARADOR">Subido por Preparador</option>
-                <option value="ENTREVISTA">Llevar a Entrevista</option>
-                <option value="OTROS">Descargables/Otros</option>
+                {% for cat in categorias_documentos %}
+                    <option value="{{ cat.id }}">{{ cat.nombre }}</option>
+                {% endfor %}
               </select>
             </div>
             <div class="mb-2">
@@ -411,6 +526,62 @@
 
   </div>{# /col derecha #}
 </div>{# /row #}
+
+{# ── MODAL EDITAR CASO ── #}
+{% if not esta_archivado %}
+<div class="modal fade" id="editCaseModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow rounded-4">
+      <div class="modal-header border-0 pb-0 pt-4 px-4">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen-to-square text-primary me-2"></i> Editar Detalles del Caso</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit_case">
+        <div class="modal-body px-4">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Status del Caso</label>
+            <select name="status_id" class="form-select">
+              {% for st in estados %}
+                <option value="{{ st.id }}" {% if caso.status_actual.id == st.id %}selected{% endif %}>{{ st.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Tipo de Visa</label>
+            <select name="tipo_id" class="form-select">
+              {% for tc in tipos_choices %}
+                <option value="{{ tc.id }}" {% if caso.tipo_id == tc.id %}selected{% endif %}>{{ tc.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Sub-Tipo</label>
+            <select name="sub_tipo_id" class="form-select">
+              {% for st in sub_tipos_choices %}
+                <option value="{{ st.id }}" {% if caso.sub_tipo_id == st.id %}selected{% endif %}>{{ st.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Preparador Asignado</label>
+            <select name="preparador_id" class="form-select">
+              {% for prep in preparadores %}
+                <option value="{{ prep.id }}" {% if caso.preparador.id == prep.id %}selected{% endif %}>{{ prep.get_full_name|default:prep.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pb-4 px-4">
+          <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary rounded-pill fw-bold px-4 shadow-sm">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 {% endblock %}
 

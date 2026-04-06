@@ -1,13 +1,17 @@
 from django import forms
-from .models import Documento, MensajeCliente, ActualizacionCliente, Caso, CaseStatus, Credencial
+from .models import (
+    Documento, MensajeCliente, ActualizacionCliente, Caso, CaseStatus, Credencial,
+    Agencia, Checklist, ChecklistItem, ConfiguracionMensajes, TipoCaso, SubTipoCaso
+)
 from django.contrib.auth.models import User
 
 class DocumentoClienteForm(forms.ModelForm):
     class Meta:
         model = Documento
-        fields = ['nombre_documento', 'detalle', 'archivo']
+        fields = ['nombre_documento', 'categoria', 'detalle', 'archivo']
         labels = {
             'nombre_documento': 'Título del Documento',
+            'categoria': 'Categoría',
             'detalle': 'Mensaje o Detalle (Opcional)',
             'archivo': 'Seleccionar Archivo',
         }
@@ -17,7 +21,16 @@ class DocumentoClienteForm(forms.ModelForm):
                 'rows': 3,
                 'placeholder': 'Explica brevemente de qué trata este documento...'
             }),
+            'categoria': forms.Select(attrs={'class': 'form-select'}),
         }
+
+    def __init__(self, *args, agency=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .models import CategoriaDocumento
+        if agency:
+            self.fields['categoria'].queryset = CategoriaDocumento.objects.filter(agencia=agency)
+        else:
+            self.fields['categoria'].queryset = CategoriaDocumento.objects.all()
 
 class MensajeClienteForm(forms.ModelForm):
     class Meta:
@@ -56,13 +69,13 @@ class NuevoCasoForm(forms.Form):
             'placeholder': 'Ej: Juan Pérez - Residencia Permanente',
         })
     )
-    tipo = forms.ChoiceField(
-        choices=Caso.TIPO_CHOICES,
-        label='Tipo de Visa',
+    tipo = forms.ModelChoiceField(
+        queryset=TipoCaso.objects.none(),
+        label='Tipo de Caso',
         widget=forms.Select(attrs={'class': 'form-select'})
     )
-    sub_tipo = forms.ChoiceField(
-        choices=Caso.SUB_TIPO_CHOICES,
+    sub_tipo = forms.ModelChoiceField(
+        queryset=SubTipoCaso.objects.none(),
         label='Sub-Tipo',
         widget=forms.Select(attrs={'class': 'form-select'})
     )
@@ -126,4 +139,94 @@ class NuevoCasoForm(forms.Form):
             self.fields['status_inicial'].queryset = CaseStatus.objects.filter(
                 agencia=agencia
             ).order_by('orden')
+            # Dynamic Types and Subtypes
+            self.fields['tipo'].queryset = TipoCaso.objects.filter(agencia=agencia)
+            self.fields['sub_tipo'].queryset = SubTipoCaso.objects.filter(tipo_caso__agencia=agencia)
 
+
+class ChecklistForm(forms.ModelForm):
+    class Meta:
+        model = Checklist
+        fields = ['nombre']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de la Plantilla (ej: Requisitos Residencia)'})
+        }
+
+class ChecklistItemForm(forms.ModelForm):
+    class Meta:
+        model = ChecklistItem
+        fields = ['texto', 'orden']
+        widgets = {
+            'texto': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Descripción del ítem'}),
+            'orden': forms.NumberInput(attrs={'class': 'form-control'})
+        }
+
+class CaseStatusForm(forms.ModelForm):
+    class Meta:
+        model = CaseStatus
+        fields = ['nombre', 'orden', 'color']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'orden': forms.NumberInput(attrs={'class': 'form-control'}),
+            'color': forms.TextInput(attrs={'class': 'form-control', 'type': 'color'})
+        }
+
+class ConfigMensajesForm(forms.ModelForm):
+    class Meta:
+        model = ConfiguracionMensajes
+        fields = ['limite', 'periodo']
+        widgets = {
+            'limite': forms.NumberInput(attrs={'class': 'form-control'}),
+            'periodo': forms.Select(attrs={'class': 'form-select'})
+        }
+
+class PreparadorForm(forms.Form):
+    username = forms.CharField(max_length=150, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    first_name = forms.CharField(max_length=30, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    last_name = forms.CharField(max_length=30, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    email = forms.EmailField(widget=forms.EmailInput(attrs={'class': 'form-control'}))
+    password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control'}), required=False, help_text="Dejar en blanco para mantener actual")
+    es_admin = forms.BooleanField(required=False, widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
+
+class TipoCasoForm(forms.ModelForm):
+    class Meta:
+        model = TipoCaso
+        fields = ['nombre']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'})
+        }
+
+class SubTipoCasoForm(forms.ModelForm):
+    class Meta:
+        model = SubTipoCaso
+        fields = ['tipo_caso', 'nombre']
+        widgets = {
+            'tipo_caso': forms.Select(attrs={'class': 'form-select'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control'})
+        }
+    
+    def __init__(self, *args, agencia=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if agencia:
+            self.fields['tipo_caso'].queryset = TipoCaso.objects.filter(agencia=agencia)
+
+class CategoriaDocumentoForm(forms.ModelForm):
+    class Meta:
+        from .models import CategoriaDocumento
+        model = CategoriaDocumento
+        fields = ['nombre']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Acta de Nacimiento, Pasaporte...'})
+        }
+
+class DerivadoForm(forms.ModelForm):
+    class Meta:
+        from .models import Derivado
+        model = Derivado
+        fields = ['nombre', 'apellido', 'telefono', 'email']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre'}),
+            'apellido': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Apellido'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Teléfono'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
+        }
