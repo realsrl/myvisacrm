@@ -1,0 +1,240 @@
+
+{% load static %}
+{% load crispy_forms_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- SEO METADATA -->
+    <title>MyVisaCRM | Immigration Case Management Software / Software de Gestión Migratoria</title>
+    <meta name="description" content="Manage immigration cases, organize documents, and keep clients informed with MyVisaCRM. Reduce stress and improve efficiency.">
+    <meta name="keywords" content="visa CRM, immigration software, gestión de casos migratorios, software migratorio">
+
+    <!-- FONTS & STYLES -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'crm/landing.css' %}">
+</head>
+<body class="landing-page">
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg landing-nav py-3">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <img src="{% static 'crm/myvisacrm.png' %}" alt="MyVisaCRM" height="180">
+            </a>
+            
+            <div class="d-flex align-items-center gap-3 ms-auto">
+                <div class="language-toggle me-2">
+                    <button class="lang-btn active" id="lang-es">ES</button>
+                    <button class="lang-btn" id="lang-en">EN</button>
+                </div>
+
+                <a href="{% url 'pricing' %}" class="btn btn-link text-decoration-none fw-bold text-dark me-2">
+                    <span data-es>Precios</span><span data-en>Pricing</span>
+                </a>
+                
+                <a href="https://wa.me/13476715112" target="_blank" class="btn btn-whatsapp rounded-pill fw-bold">
+                    <i class="fa-brands fa-whatsapp me-1"></i> 
+                    <span data-es>WhatsApp</span><span data-en>Contact Us</span>
+                </a>
+
+                {% if not user.is_authenticated %}
+                <button type="button" class="btn btn-primary-custom d-none d-lg-block" data-bs-toggle="modal" data-bs-target="#loginModal">
+                    <span data-es>Iniciar Sesión</span><span data-en>Login</span>
+                </button>
+                {% else %}
+                <a href="{% url 'dashboard' %}" class="btn btn-primary-custom">
+                    <span data-es>Ir al Dashboard</span><span data-en>Go to Dashboard</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION (PANORAMIC REDESIGN) -->
+    <section class="hero-section">
+        <div class="container-fluid px-md-5">
+            <div class="row align-items-center g-0">
+                <!-- HERO CONTENT -->
+                <div class="col-lg-6 pr-lg-5 text-center">
+                    <h1 class="hero-headline">
+                        <span data-es>Organiza tus casos migratorios sin volverte loco</span> 
+                        <span data-en>Manage immigration cases without losing your mind</span>
+                    </h1>
+                    <p class="hero-subheadline mx-auto">
+                        <span data-es>MyVisaCRM te ayuda a organizar expedientes, reducir llamadas innecesarias y mantener a tus clientes informados en cada etapa del proceso.</span> 
+                        <span data-en>MyVisaCRM helps you organize cases, reduce repetitive client calls, and keep clients informed at every stage of their process.</span>
+                    </p>
+                    <div class="d-flex flex-wrap gap-4 justify-content-center mb-5 mb-lg-0">
+                        <button type="button" class="btn btn-primary-custom btn-lg px-5 py-3 fs-5" data-bs-toggle="modal" data-bs-target="#loginModal">
+                            <span data-es>Comenzar ahora</span><span data-en>Get Started</span>
+                        </button>
+                        <a href="https://wa.me/13476715112" class="btn btn-glass btn-lg px-4 py-3 border shadow-sm fs-5">
+                            <i class="fa-brands fa-whatsapp me-2 text-success h4 mb-0"></i>
+                            <span data-es>Hablar por WhatsApp</span><span data-en>WhatsApp Us</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- HERO IMAGE PANORAMIC -->
+                <div class="col-lg-6">
+                    <div class="hero-image-panoramic">
+                        <img src="{% static 'crm/hero.png' %}" alt="MyVisaCRM Cinematic Dashboard">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CORE FEATURES SECTION -->
+    <section class="py-5 bg-white">
+        <div class="container-fluid px-md-5 py-5">
+            <div class="text-center mb-5 pb-4">
+                <h2 class="fw-bold display-4 mb-3 px-lg-5">
+                    <span data-es>Software de gestión de casos migratorios diseñado para abogados y consultores</span> 
+                    <span data-en>Immigration Case Management Software Built for Attorneys and Agencies</span>
+                </h2>
+                <div class="mx-auto vibrant-gradient rounded-pill" style="width: 150px; height: 8px;"></div>
+            </div>
+
+            <div class="row g-5">
+                <!-- Feature 1 -->
+                <div class="col-md-4">
+                    <div class="feature-card shadow-sm">
+                        <div class="feature-icon"><i class="fa-solid fa-folder-tree"></i></div>
+                        <h3 class="fw-bold mb-3"><span data-es>Organización de expedientes</span><span data-en>Case Organization</span></h3>
+                        <p class="text-muted fs-5"><span data-es>Mantén todos tus expedientes migratorios organizados en un solo lugar de forma visual.</span><span data-en>Keep all your immigration files organized in one visual place.</span></p>
+                    </div>
+                </div>
+                <!-- Feature 2 -->
+                <div class="col-md-4">
+                    <div class="feature-card shadow-sm">
+                        <div class="feature-icon i-purple"><i class="fa-solid fa-shield-halved"></i></div>
+                        <h3 class="fw-bold mb-3"><span data-es>Seguridad tipo militar</span><span data-en>Military-grade Security</span></h3>
+                        <p class="text-muted fs-5"><span data-es>Almacenamiento seguro de documentos y contraseñas con encriptación avanzada.</span><span data-en>Secure storage for documents and passwords with advanced encryption.</span></p>
+                    </div>
+                </div>
+                <!-- Feature 3 -->
+                <div class="col-md-4">
+                    <div class="feature-card shadow-sm">
+                        <div class="feature-icon i-orange"><i class="fa-solid fa-phone-slash"></i></div>
+                        <h3 class="fw-bold mb-3"><span data-es>Menos llamadas repetitivas</span><span data-en>Fewer Repetitive Calls</span></h3>
+                        <p class="text-muted fs-5"><span data-es>Reduce las llamadas de clientes preguntando por su estatus. Ellos pueden verlo por sí mismos.</span><span data-en>Reduce client calls asking for status. They can check it themselves.</span></p>
+                    </div>
+                </div>
+                <!-- Feature 4 -->
+                <div class="col-md-4">
+                    <div class="feature-card shadow-sm">
+                        <div class="feature-icon i-cyan"><i class="fa-solid fa-chart-line"></i></div>
+                        <h3 class="fw-bold mb-3"><span data-es>Sistema tipo USCIS</span><span data-en>USCIS-style Tracking</span></h3>
+                        <p class="text-muted fs-5"><span data-es>Seguimiento detallado del caso para que el cliente sepa exactamente qué está pasando.</span><span data-en>Detailed case tracking so the client knows exactly what's happening.</span></p>
+                    </div>
+                </div>
+                <!-- Feature 5 -->
+                <div class="col-md-4">
+                    <div class="feature-card shadow-sm">
+                        <div class="feature-icon i-pink"><i class="fa-solid fa-comments"></i></div>
+                        <h3 class="fw-bold mb-3"><span data-es>Chat personalizable</span><span data-en>Customizable Chat</span></h3>
+                        <p class="text-muted fs-5"><span data-es>Habilita o deshabilita el chat interno según tus necesidades de comunicación.</span><span data-en>Enable or disable internal chat based on your communication needs.</span></p>
+                    </div>
+                </div>
+                <!-- Feature 6 -->
+                <div class="col-md-4">
+                    <div class="feature-card shadow-sm">
+                        <div class="feature-icon i-indigo"><i class="fa-solid fa-diagram-project"></i></div>
+                        <h3 class="fw-bold mb-3"><span data-es>Embudo visual (Pipeline)</span><span data-en>Visual Pipeline</span></h3>
+                        <p class="text-muted fs-5"><span data-es>Visualiza el flujo de todos tus casos en un tablero Kanban profesional.</span><span data-en>Visualize the flow of all your cases in a professional Kanban board.</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- HOW IT WORKS SECTION -->
+    <section class="py-5 bg-light">
+        <div class="container py-5">
+            <h2 class="text-center fw-bold mb-5"><span data-es>Cómo funciona</span><span data-en>How it works</span></h2>
+            <div class="row text-center g-4">
+                <div class="col-md-4">
+                    <div class="step-number mx-auto">1</div>
+                    <h4 class="fw-bold"><span data-es>Recibe la información</span><span data-en>Collect Information</span></h4>
+                    <p class="text-muted"><span data-es>Usa formularios personalizados para recolectar datos.</span><span data-en>Use custom forms to collect client data.</span></p>
+                </div>
+                <div class="col-md-4">
+                    <div class="step-number mx-auto">2</div>
+                    <h4 class="fw-bold"><span data-es>Organiza el caso</span><span data-en>Organize Case</span></h4>
+                    <p class="text-muted"><span data-es>Gestiona documentos y tareas automáticamente.</span><span data-en>Manage documents and tasks automatically.</span></p>
+                </div>
+                <div class="col-md-4">
+                    <div class="step-number mx-auto">3</div>
+                    <h4 class="fw-bold"><span data-es>Mantén informados</span><span data-en>Keep Informed</span></h4>
+                    <p class="text-muted"><span data-es>Tus clientes ven el progreso en tiempo real.</span><span data-en>Your clients see progress in real-time.</span></p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- BENEFITS SECTION -->
+    <section class="py-5 vibrant-bg text-white">
+        <div class="container py-5">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h2 class="display-5 fw-bold mb-3">
+                        <span data-es>Menos estrés. Más control.</span><span data-en>Less stress. More control.</span>
+                    </h2>
+                    <p class="lead mb-0">
+                        <span data-es>Sabes exactamente en qué etapa está cada caso en todo momento.</span> 
+                        <span data-en>Know exactly where every case stands at any given moment.</span>
+                    </p>
+                </div>
+                <div class="col-md-4 text-md-end mt-4 mt-md-0">
+                    <a href="https://wa.me/13476715112" class="btn btn-light btn-lg rounded-pill px-5 fw-bold text-primary">
+                        <i class="fa-brands fa-whatsapp me-2"></i>
+                        <span data-es>Contáctanos</span><span data-en>Get in touch</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- LOGIN MODAL -->
+    {% if not user.is_authenticated %}
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+                <div class="vibrant-gradient text-white p-4 text-center">
+                    <h3 class="fw-bold mb-0"><span data-es>Acceso MyVisaCRM</span><span data-en>Access MyVisaCRM</span></h3>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <form method="post" action="">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-primary-custom py-3">
+                                <span data-es>Acceder ahora</span><span data-en>Access Now</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- FOOTER -->
+    <footer class="py-5 bg-white border-top">
+        <div class="container text-center text-muted">
+            <p class="mb-0">© 2026 MyVisaCRM. <span data-es>Todos los derechos reservados.</span><span data-en>All rights reserved.</span></p>
+        </div>
+    </footer>
+
+    <!-- SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'crm/landing.js' %}"></script>
+</body>
+</html>

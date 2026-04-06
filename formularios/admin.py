@@ -1,0 +1,44 @@
+from django.contrib import admin
+from .models import Formulario, Seccion, FormularioSeccion, Pregunta, RespuestaFormulario, MensajeInterno
+
+class PreguntaInline(admin.TabularInline):
+    model = Pregunta
+    extra = 1
+    sortable_field_name = "orden"
+
+class FormularioSeccionInline(admin.TabularInline):
+    model = FormularioSeccion
+    extra = 1
+
+class PreguntaSueltaInline(admin.TabularInline):
+    model = Pregunta
+    extra = 1
+    exclude = ('seccion',)
+    verbose_name = "Pregunta Suelta (Sin sección)"
+    verbose_name_plural = "Preguntas Sueltas"
+
+@admin.register(Formulario)
+class FormularioAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'activo', 'creado_el')
+    inlines = [FormularioSeccionInline, PreguntaSueltaInline]
+
+@admin.register(Seccion)
+class SeccionAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'repetible', 'activo')
+    inlines = [PreguntaInline]
+
+@admin.register(Pregunta)
+class PreguntaAdmin(admin.ModelAdmin):
+    list_display = ('texto_pregunta', 'seccion', 'formulario', 'tipo_dato', 'orden')
+    list_filter = ('tipo_dato', 'formulario', 'seccion')
+
+@admin.register(RespuestaFormulario)
+class RespuestaFormularioAdmin(admin.ModelAdmin):
+    list_display = ('caso', 'formulario', 'estado', 'ultima_actualizacion')
+    list_filter = ('estado', 'formulario')
+    readonly_fields = ('ultima_actualizacion',)
+
+@admin.register(MensajeInterno)
+class MensajeInternoAdmin(admin.ModelAdmin):
+    list_display = ('emisor', 'receptor', 'caso', 'fecha_hora', 'leido')
+    list_filter = ('leido', 'fecha_hora')

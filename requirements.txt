@@ -1,0 +1,9 @@
+django>=4.2
+django-crispy-forms>=2.0
+crispy-bootstrap5>=0.7
+django-countries>=7.5
+django-localflavor>=4.0
+cryptography>=41.0
+pillow>=10.0
+stripe>=6.0
+django-jazzmin>=3.0

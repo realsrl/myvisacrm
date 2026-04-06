@@ -1,0 +1,496 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ caso.titulo }} | Visa Management{% endblock %}
+
+{# Load SweetAlert2 #}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% endblock %}
+
+{% block content %}
+
+{# ── FLASH MESSAGES ──────────────────────────────────────────────── #}
+{% if messages %}
+<div class="mb-4">
+  {% for message in messages %}
+    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow-sm border-0 rounded-3" role="alert">
+      {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── HEADER ─────────────────────────────────────────────────────── #}
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+  <div>
+    <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary mb-2">
+      <i class="fa-solid fa-arrow-left me-1"></i> Volver
+    </a>
+    <h2 class="fw-bold mb-1">
+        {{ caso.titulo }}
+        {% if esta_archivado %}
+            <span class="badge bg-secondary fs-6 rounded-pill ms-2"><i class="fa-solid fa-box-archive me-1"></i> ARCHIVADO</span>
+        {% endif %}
+    </h2>
+    <p class="text-muted mb-0">
+      <i class="fa-solid fa-user-circle me-1"></i>
+      <strong>Beneficiario:</strong> {{ caso.beneficiario_principal.get_full_name|default:caso.beneficiario_principal.username }}
+      &nbsp;·&nbsp;
+      <span class="text-muted">Abierto: {{ caso.fecha_apertura|date:"d M Y" }}</span>
+    </p>
+  </div>
+  <div class="d-flex gap-2 align-self-start mt-2">
+    {% if not esta_archivado %}
+        <a href="{% url 'archive_case' caso.pk %}" class="btn btn-danger btn-sm rounded-pill px-3 shadow-sm">
+            <i class="fa-solid fa-box-archive me-1"></i> Archivar Caso
+        </a>
+    {% endif %}
+    <span class="badge bg-primary fs-6 rounded-pill px-3 py-2 shadow-sm">
+        {{ caso.status_actual.nombre }}
+    </span>
+  </div>
+</div>
+
+{% if esta_archivado %}
+<div class="alert alert-secondary border-0 shadow-sm rounded-4 mb-4">
+    <h6 class="fw-bold mb-1"><i class="fa-solid fa-circle-info me-2"></i> Caso Archivados (Lectura)</h6>
+    <p class="small mb-0 text-muted">Este caso ha sido archivado. No se pueden realizar cambios, agregar documentos ni enviar mensajes. Solo está disponible para consulta y descarga de archivos.</p>
+</div>
+{% endif %}
+
+{# ── MAIN GRID ── #}
+<div class="row g-4">
+
+  {# ── COLUMNA IZQUIERDA: Info + Derivados + Credenciales ─────────── #}
+  <div class="col-xl-3 col-lg-4">
+
+    {# Info General #}
+    <div class="card border-0 shadow-sm rounded-4 mb-3">
+      <div class="card-body p-3">
+        <h6 class="fw-bold text-uppercase text-muted small mb-3 letter-spacing">Información</h6>
+        <div class="d-flex flex-column gap-2 small">
+          <div><span class="text-muted">Tipo:</span> <strong>{{ caso.get_tipo_display }}</strong></div>
+          <div><span class="text-muted">Sub-tipo:</span> <strong>{{ caso.get_sub_tipo_display }}</strong></div>
+          <div><span class="text-muted">Preparador:</span> <strong>{{ caso.preparador.get_full_name|default:caso.preparador.username }}</strong></div>
+          <div><span class="text-muted">Última mod:</span> <strong>{{ caso.ultima_modificacion|date:"d/m/Y H:i" }}</strong></div>
+          <hr class="my-2 opacity-10">
+          {% if not esta_archivado %}
+          <form method="post">
+            {% csrf_token %}<input type="hidden" name="action" value="toggle_chat">
+            <button type="submit" class="btn btn-sm {% if caso.chat_habilitado %}btn-outline-danger{% else %}btn-outline-success{% endif %} w-100 py-1">
+              {% if caso.chat_habilitado %}
+                <i class="fa-solid fa-comment-slash me-1"></i> Deshabilitar Chat
+              {% else %}
+                <i class="fa-solid fa-comments me-1"></i> Habilitar Chat
+              {% endif %}
+            </button>
+          </form>
+          {% else %}
+            <div class="alert alert-light border small text-muted text-center py-1 mb-0">Chat Deshabilitado</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {# Familiares #}
+    <div class="card border-0 shadow-sm rounded-4 mb-3">
+      <div class="card-body p-3">
+        <h6 class="fw-bold text-uppercase text-muted small mb-3">Familiares</h6>
+        {% if derivados %}
+          {% for f in derivados %}
+            <div class="d-flex align-items-center mb-2 small">
+              <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white flex-shrink-0 me-2" style="width:30px;height:30px;font-size:.7rem;">
+                {{ f.nombre|first }}{{ f.apellido|first }}
+              </div>
+              <div>
+                <div class="fw-semibold">{{ f.nombre }} {{ f.apellido }}</div>
+                <div class="text-muted">{{ f.telefono|default:f.email|default:"Sin contacto" }}</div>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted small mb-0">Sin familiares derivados.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Credenciales (Vault) #}
+    <div class="card border-0 shadow-sm rounded-4 border-start border-warning border-4">
+      <div class="card-body p-3">
+        <h6 class="fw-bold text-warning small mb-3"><i class="fa-solid fa-vault me-1"></i> Bóveda de Credenciales</h6>
+        {% if credenciales %}
+          {% for c in credenciales %}
+            <div class="mb-3 p-2 bg-light rounded small text-break position-relative border">
+              <strong class="text-primary">{{ c.sitio_web }}</strong><br>
+              <span class="text-muted">Usuario:</span> 
+              <span class="fw-semibold">{{ c.usuario }}</span>
+              <button class="btn btn-link btn-sm p-0 ms-1 copy-simple" data-clipboard="{{ c.usuario }}" title="Copiar Usuario"><i class="fa-regular fa-copy"></i></button>
+              <br>
+              <span class="text-muted">Password:</span> 
+              <span class="text-muted">••••••••</span>
+              <button class="btn btn-warning btn-sm p-0 px-1 ms-1 secure-copy" data-id="{{ c.pk }}" title="Ver y Copiar Password">
+                <i class="fa-solid fa-key" style="font-size: 0.7rem;"></i>
+              </button>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted small mb-2">Sin credenciales registradas.</p>
+        {% endif %}
+
+        {% if not esta_archivado %}
+        <hr class="my-2 opacity-10">
+        <button class="btn btn-sm btn-outline-warning w-100 py-1" type="button" data-bs-toggle="collapse" data-bs-target="#addCredForm">
+          <i class="fa-solid fa-plus me-1"></i> Agregar Credencial
+        </button>
+        <div class="collapse mt-2" id="addCredForm">
+          <form method="post" class="small">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_credencial">
+            <div class="mb-2">
+              <input type="text" name="cred_sitio" class="form-control form-control-sm" placeholder="Sitio Web (ej: CEAC, USCIS)" required>
+            </div>
+            <div class="mb-2">
+              <input type="text" name="cred_usuario" class="form-control form-control-sm" placeholder="Usuario" required>
+            </div>
+            <div class="mb-2">
+              <input type="text" name="cred_password" class="form-control form-control-sm" placeholder="Contraseña">
+            </div>
+            <button type="submit" class="btn btn-warning btn-sm w-100 fw-bold"><i class="fa-solid fa-lock me-1"></i> Guardar en Bóveda</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── COLUMNA CENTRAL: Actividades + Formularios ───────────────────── #}
+  <div class="col-xl-5 col-lg-8">
+    
+    {# Actividades #}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+      <div class="card-header bg-white border-0 pt-3 pb-0 px-4 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0"><i class="fa-solid fa-list-check text-primary me-2"></i> Tareas de este Caso</h6>
+        <span class="badge bg-secondary rounded-pill">{{ actividades|length }}</span>
+      </div>
+      <div class="card-body px-3 pb-3 pt-2">
+        {% if actividades %}
+          <div class="d-flex flex-column gap-2">
+            {% for act in actividades %}
+            <div class="border rounded-3 p-3 bg-white task-row border-{{ act.semaforo_alerta }}">
+              <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                <div class="flex-grow-1">
+                  <div class="fw-semibold small">{{ act.titulo }}{% if act.prioridad_alta %}<i class="fa-solid fa-fire text-danger ms-1 fa-xs"></i>{% endif %}</div>
+                  {% if act.detalle %}<div class="text-muted" style="font-size:.75rem;">{{ act.detalle|truncatechars:80 }}</div>{% endif %}
+                </div>
+                {% if not esta_archivado %}
+                <form method="post" class="flex-shrink-0">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="update_status">
+                  <input type="hidden" name="actividad_id" value="{{ act.pk }}">
+                  <div class="input-group input-group-sm" style="min-width:160px;">
+                    <select name="nuevo_status" class="form-select form-select-sm">
+                      {% for val, label in status_choices %}
+                        <option value="{{ val }}" {% if act.status == val %}selected{% endif %}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-primary px-2"><i class="fa-solid fa-check fa-xs"></i></button>
+                  </div>
+                </form>
+                {% else %}
+                <span class="badge bg-light text-muted border">{{ act.get_status_display }}</span>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-muted small mb-0 p-2 text-center text-opacity-50"><i class="fa-solid fa-box-open me-2"></i>Sin tareas pendientes.</p>
+        {% endif %}
+
+        {% if not esta_archivado %}
+        <hr class="my-2 opacity-10">
+        <button class="btn btn-sm btn-outline-primary w-100 py-1" type="button" data-bs-toggle="collapse" data-bs-target="#addTareaForm">
+          <i class="fa-solid fa-plus me-1"></i> Agregar Tarea
+        </button>
+        <div class="collapse mt-2" id="addTareaForm">
+          <form method="post" class="p-3 border rounded bg-light small">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_tarea">
+            <div class="mb-2">
+              <label class="form-label fw-bold">Título de la Tarea</label>
+              <input type="text" name="titulo_tarea" class="form-control form-control-sm" placeholder="Ej: Revisar pasaporte" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-bold">Detalle (Opcional)</label>
+              <textarea name="detalle_tarea" class="form-control form-control-sm" rows="2"></textarea>
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <label class="form-label fw-bold">Programada</label>
+                <input type="date" name="fecha_programada" class="form-control form-control-sm">
+              </div>
+              <div class="col-6">
+                <label class="form-label fw-bold">Vencimiento</label>
+                <input type="date" name="fecha_vencimiento" class="form-control form-control-sm">
+              </div>
+            </div>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" name="prioridad_alta" id="prioridadCheck">
+              <label class="form-check-label" for="prioridadCheck">Prioridad Alta 🔥</label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Crear Tarea</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Formularios Dinámicos #}
+    <div class="card border-0 shadow-sm rounded-4">
+      <div class="card-header bg-white border-0 pt-3 pb-0 px-4 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0"><i class="fa-solid fa-file-signature text-warning me-2"></i> Cuestionarios Dinámicos</h6>
+      </div>
+      <div class="card-body px-4 pb-4">
+        {% if not esta_archivado %}
+        <form method="post" class="mb-4">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="assign_form">
+          <div class="input-group input-group-sm">
+            <select name="formulario_id" class="form-select" required>
+              <option value="">-- Asignar Nuevo --</option>
+              {% for f in formularios_disponibles %}
+                <option value="{{ f.pk }}">{{ f.nombre }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-warning btn-sm fw-bold px-3">Asignar</button>
+          </div>
+        </form>
+        {% endif %}
+
+        {% if respuestas_formularios %}
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle">
+              <tbody class="small">
+                {% for resp in respuestas_formularios %}
+                  <tr>
+                    <td class="fw-semibold">{{ resp.formulario.nombre }}</td>
+                    <td><span class="badge {% if resp.estado == 'BORRADOR' %}bg-warning text-dark{% else %}bg-success{% endif %} rounded-pill">{{ resp.get_estado_display }}</span></td>
+                    <td class="text-end"><a href="{% url 'formulario_detalle' resp.id %}" class="btn btn-sm btn-outline-primary py-0">Leer</a></td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── COLUMNA DERECHA: Actualizaciones + Documentos + Chat ────────── #}
+  <div class="col-xl-4 col-lg-12">
+
+    {# Actualizaciones #}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+      <div class="card-header bg-white border-0 pt-3 pb-2 px-4">
+        <h6 class="fw-bold mb-0"><i class="fa-solid fa-bullhorn text-info me-2"></i> Actualizaciones al Cliente</h6>
+      </div>
+      <div class="card-body px-4 pb-4">
+        {% if not esta_archivado %}
+        <form method="post" class="mb-3">
+          {% csrf_token %}<input type="hidden" name="action" value="add_actualizacion">
+          <div class="input-group">
+            <textarea name="mensaje" rows="2" class="form-control form-control-sm" placeholder="Publicar progreso..."></textarea>
+            <button type="submit" class="btn btn-info btn-sm px-3"><i class="fa-solid fa-paper-plane text-white"></i></button>
+          </div>
+        </form>
+        {% endif %}
+        <div style="max-height:150px; overflow-y:auto;" class="small">
+          {% for upd in actualizaciones %}<div class="bg-light p-2 rounded-3 mb-2"><strong>{{ upd.fecha|date:"d/m H:i" }}</strong>: {{ upd.mensaje }}</div>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {# DOCUMENTOS DEL CASO #}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+      <div class="card-header bg-white border-0 pt-3 pb-2 px-4 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0"><i class="fa-solid fa-folder-open text-success me-2"></i> Archivos del Caso</h6>
+        <span class="badge bg-secondary rounded-pill">{{ documentos|length }}</span>
+      </div>
+      <div class="card-body px-3 pb-4">
+        {% if documentos %}
+          <div class="d-flex flex-column gap-2" style="max-height:250px; overflow-y:auto;">
+            {% for doc in documentos %}
+              <div class="d-flex align-items-center p-2 rounded-3 hover-lift border bg-white small">
+                <div class="me-2">
+                    {% with ext=doc.archivo.name|lower %}
+                      {% if ".pdf" in ext %}<i class="fa-solid fa-file-pdf text-danger"></i>
+                      {% elif ".doc" in ext %}<i class="fa-solid fa-file-word text-primary"></i>
+                      {% elif ".jpg" in ext or ".png" in ext %}<i class="fa-solid fa-file-image text-warning"></i>
+                      {% else %}<i class="fa-solid fa-file text-secondary"></i>{% endif %}
+                    {% endwith %}
+                </div>
+                <div class="flex-grow-1 text-truncate pe-2">
+                  <div class="fw-bold text-truncate">{{ doc.nombre_documento }}</div>
+                  <div class="text-muted" style="font-size:0.65rem;">{{ doc.get_categoria_display }} · {{ doc.fecha_subida|date:"d/m/y" }}</div>
+                </div>
+                <a href="{{ doc.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-success p-1 rounded-circle"><i class="fa-solid fa-download fa-xs p-1"></i></a>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-center text-muted small py-3">No hay archivos.</p>
+        {% endif %}
+
+        {% if not esta_archivado %}
+        <hr class="my-2 opacity-10">
+        <button class="btn btn-sm btn-outline-success w-100 py-1" type="button" data-bs-toggle="collapse" data-bs-target="#addDocForm">
+          <i class="fa-solid fa-plus me-1"></i> Subir Documento
+        </button>
+        <div class="collapse mt-2" id="addDocForm">
+          <form method="post" enctype="multipart/form-data" class="p-3 border rounded bg-light small">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_documento">
+            <div class="mb-2">
+              <label class="form-label fw-bold">Título del Documento</label>
+              <input type="text" name="nombre_documento" class="form-control form-control-sm" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-bold">Categoría</label>
+              <select name="categoria" class="form-select form-select-sm">
+                <option value="PREPARADOR">Subido por Preparador</option>
+                <option value="ENTREVISTA">Llevar a Entrevista</option>
+                <option value="OTROS">Descargables/Otros</option>
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-bold">Archivo</label>
+              <input type="file" name="archivo" class="form-control form-control-sm" required>
+            </div>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" name="user_can_view" id="viewCheck" checked>
+              <label class="form-check-label" for="viewCheck">Visible para el cliente</label>
+            </div>
+            <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">Subir Archivo</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Chat #}
+    <div class="card border-0 shadow-sm rounded-4">
+      <div class="card-header bg-white border-0 pt-3 pb-2 px-4 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0"><i class="fa-regular fa-comment-dots text-primary me-2"></i> Chat</h6>
+        {% if not caso.chat_habilitado %}
+          <span class="badge bg-danger rounded-pill" style="font-size: 0.6rem;">Deshabilitado</span>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        <div id="chat-thread" style="height:350px; overflow-y:auto;" class="bg-light p-3">
+          {% for msg in mensajes %}
+            <div class="mb-3 d-flex {% if msg.remitente == request.user %}justify-content-end{% endif %}">
+              <div class="p-2 rounded-3 shadow-sm small {% if msg.remitente == request.user %}bg-primary text-white{% else %}bg-white text-dark{% endif %}" style="max-width:85%;">
+                {{ msg.contenido }}<br><small class="opacity-50" style="font-size:0.6rem;">{{ msg.fecha|date:"H:i" }}</small>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        {% if not esta_archivado %}
+        <form method="post" class="p-3 border-top">
+          {% csrf_token %}<input type="hidden" name="action" value="reply_message">
+          <div class="input-group">
+            <input type="text" name="contenido" class="form-control form-control-sm" placeholder="Enviar mensaje...">
+            <button class="btn btn-primary btn-sm"><i class="fa-solid fa-paper-plane fa-xs"></i></button>
+          </div>
+        </form>
+        {% else %}
+            <div class="p-3 text-center text-muted small border-top">Chat cerrado (Lectura)</div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>{# /col derecha #}
+</div>{# /row #}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const chat = document.getElementById('chat-thread');
+  if (chat) chat.scrollTop = chat.scrollHeight;
+
+  // Copia simple (Usuario)
+  document.querySelectorAll('.copy-simple').forEach(btn => {
+    btn.addEventListener('click', function() {
+      navigator.clipboard.writeText(this.dataset.clipboard).then(() => {
+        const icon = this.querySelector('i');
+        icon.className = 'fa-solid fa-check text-success';
+        setTimeout(() => { icon.className = 'fa-regular fa-copy'; }, 1500);
+      });
+    });
+  });
+
+  // Copia segura (Password)
+  document.querySelectorAll('.secure-copy').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      console.log('Botón de copia segura clicado, ID:', this.dataset.id);
+      const credId = this.dataset.id;
+      
+      const { value: password } = await Swal.fire({
+        title: 'Verificación de Seguridad',
+        text: 'Ingresa TU CONTRASEÑA de Preparador para ver esta credencial:',
+        input: 'password',
+        inputPlaceholder: 'Tu contraseña de acceso',
+        showCancelButton: true,
+        confirmButtonText: 'Confirmar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#ffc107',
+        inputAttributes: { autocapitalize: 'off', autocorrect: 'off' }
+      });
+
+      if (password) {
+        try {
+          const response = await fetch(`/credencial/${credId}/validar/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': '{{ csrf_token }}',
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `password_preparador=${encodeURIComponent(password)}`
+          });
+
+          const data = await response.json();
+
+          if (data.status === 'ok') {
+            await navigator.clipboard.writeText(data.password);
+            Swal.fire({
+              icon: 'success',
+              title: 'Copiado al portapapeles',
+              toast: true,
+              position: 'top-end',
+              showConfirmButton: false,
+              timer: 3000
+            });
+            // Limpieza inmediata (no guardamos en variables globales)
+            data.password = null;
+          } else {
+            Swal.fire('Error', data.message || 'Verificación fallida', 'error');
+          }
+        } catch (error) {
+          Swal.fire('Error', 'No se pudo conectar con el servidor', 'error');
+        }
+      }
+    });
+  });
+</script>
+<style>
+  .task-row { border-left-width: 4px !important; }
+  .border-danger { border-left-color: #dc3545 !important; }
+  .border-warning { border-left-color: #ffc107 !important; }
+  .border-success { border-left-color: #198754 !important; }
+  .border-info { border-left-color: #0dcaf0 !important; }
+  #chat-thread::-webkit-scrollbar { width: 4px; }
+  #chat-thread::-webkit-scrollbar-thumb { background: #dee2e6; border-radius: 10px; }
+  .letter-spacing { letter-spacing: 0.05rem; }
+</style>
+{% endblock %}

@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% load static formulario_extras %}
+
+{% block title %}Completar Formulario: {{ formulario.nombre }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4 bg-primary text-white rounded-top">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="fw-bold mb-1">{{ formulario.nombre }}</h2>
+                        <p class="mb-0 opacity-75">{{ formulario.descripcion }}</p>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge {% if respuesta.estado == 'BORRADOR' %}bg-warning{% elif respuesta.estado == 'ENVIADO' %}bg-success{% else %}bg-danger{% endif %} fs-6">
+                            Estado: {{ respuesta.get_estado_display }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <form method="post" id="dynamic-form" class="p-4 bg-white rounded-bottom" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                {% if readonly %}
+                    <div class="alert alert-info d-flex align-items-center">
+                        <i class="fa-solid fa-circle-info me-2 fs-4"></i>
+                        Este formulario está en modo **Solo Lectura**. Solo el preparador puede habilitar ediciones si es necesario.
+                    </div>
+                {% endif %}
+
+                <!-- PREGUNTAS SUELTAS (SIN SECCIÓN) -->
+                {% if preguntas_sueltas %}
+                    <div class="section-container mb-5 bg-light p-4 rounded-4 shadow-sm border-start border-primary border-4">
+                        <h4 class="fw-bold text-primary mb-3">Información General</h4>
+                        <div class="row g-3">
+                            {% for pregunta in preguntas_sueltas %}
+                                {% include 'formularios/partial_pregunta.html' with index=0 %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- SECCIONES -->
+                {% for seccion in secciones %}
+                <div class="section-container mb-5" id="section-{{ seccion.id }}" data-repetible="{{ seccion.repetible|yesno:'true,false' }}">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="fw-bold text-primary border-bottom pb-2 flex-grow-1">
+                            {{ seccion.nombre }}
+                        </h4>
+                        {% if seccion.repetible and not readonly %}
+                            <button type="button" class="btn btn-outline-primary btn-sm ms-3 add-instance" data-section-id="{{ seccion.id }}">
+                                <i class="fa-solid fa-plus me-1"></i> Agregar otro
+                            </button>
+                        {% endif %}
+                    </div>
+                    <div class="instances-container" id="instances-{{ seccion.id }}">
+                        <!-- Renderizar instancias existentes (repetibles o no) -->
+                        {% for i in "01234567"|make_list %}
+                            {% with idx=forloop.counter0 %}
+                                {% if not seccion.repetible and idx == 0 or respuesta.datos|has_data_for_index:seccion.preguntas.first.id|add_index:idx %}
+                                    <div class="instance card mb-3 border-light-subtle bg-light bg-opacity-10 p-3" data-index="{{ idx }}">
+                                        {% if seccion.repetible and not readonly %}
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-instance position-absolute top-0 end-0 m-2" title="Borrar esta sección">
+                                                <i class="fa-solid fa-trash-can"></i>
+                                            </button>
+                                        {% endif %}
+                                        <div class="row g-3">
+                                            {% for pregunta in seccion.preguntas.all %}
+                                                {% include 'formularios/partial_pregunta.html' with index=idx %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% endwith %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+
+                <div class="mt-5 pt-4 border-top d-flex justify-content-between">
+                    <button type="submit" name="action" value="save" class="btn btn-secondary px-4 py-2" {% if readonly %}disabled{% endif %} formnovalidate>
+                        <i class="fa-solid fa-save me-1"></i> Guardar Progreso
+                    </button>
+                    <button type="submit" name="action" value="send" class="btn btn-primary px-5 py-2 fw-bold" {% if readonly %}disabled{% endif %}>
+                        <i class="fa-solid fa-paper-plane me-1"></i> Enviar Formulario Final
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- TEMPLATE PARA NUEVAS INSTANCIAS (JS) -->
+{% for seccion in secciones %}
+    {% if seccion.repetible %}
+    <template id="template-section-{{ seccion.id }}">
+        <div class="instance card mb-3 border-light-subtle bg-light bg-opacity-25 p-3 shadow-sm border-start border-primary border-3" data-index="__INDEX__">
+            <div class="row g-3">
+                {% for pregunta in seccion.preguntas.all %}
+                    {% include 'formularios/partial_pregunta.html' with index='__INDEX__' %}
+                {% endfor %}
+            </div>
+            <button type="button" class="btn btn-outline-danger btn-sm remove-instance position-absolute top-0 end-0 m-2">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        </div>
+    </template>
+    {% endif %}
+{% endfor %}
+
+<style>
+    .section-container { animation: slideIn 0.4s ease-out; }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+    .instance { position: relative; border-left: 5px solid transparent; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+    .instance:hover { border-left-color: #0d6efd; background-color: rgba(13, 110, 253, 0.05) !important; transform: scale(1.002); }
+    .form-control:focus, .form-select:focus { border-color: #0d6efd; box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15); }
+    .remove-instance { opacity: 0; transition: opacity 0.2s; }
+    .instance:hover .remove-instance { opacity: 1; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Manejo de agregar instancias
+        document.querySelectorAll('.add-instance').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const sectionId = this.dataset.sectionId;
+                const container = document.getElementById('instances-' + sectionId);
+                const template = document.getElementById('template-section-' + sectionId);
+                const nextIndex = container.querySelectorAll('.instance').length;
+                
+                let html = template.innerHTML.replace(/__INDEX__/g, nextIndex);
+                const div = document.createElement('div');
+                div.innerHTML = html;
+                const newInstance = div.firstElementChild;
+                
+                // Animación de entrada
+                newInstance.style.opacity = '0';
+                newInstance.style.transform = 'translateY(10px)';
+                container.appendChild(newInstance);
+                
+                setTimeout(() => {
+                    newInstance.style.transition = 'all 0.3s ease';
+                    newInstance.style.opacity = '1';
+                    newInstance.style.transform = 'translateY(0)';
+                }, 10);
+
+                // Re-bind remove buttons
+                bindRemoveButtons();
+            });
+        });
+
+        function bindRemoveButtons() {
+            document.querySelectorAll('.remove-instance').forEach(btn => {
+                btn.onclick = function() {
+                    const inst = this.closest('.instance');
+                    inst.style.opacity = '0';
+                    inst.style.transform = 'scale(0.95)';
+                    setTimeout(() => inst.remove(), 300);
+                };
+            });
+        }
+        
+        bindRemoveButtons();
+    });
+</script>
+{% endblock %}

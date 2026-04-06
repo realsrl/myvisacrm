@@ -1,0 +1,42 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Entornos virtuales
+env/
+venv/
+ENV/
+.env/
+
+# Variables de entorno
+.env
+*.env
+
+# Django
+*.log
+*.pot
+*.pyc
+db.sqlite3
+db.sqlite3-journal
+
+# Archivos de migración (opcional, normalmente NO se ignoran)
+# */migrations/*
+# !*/migrations/__init__.py
+
+# Archivos estáticos y media (depende tu caso)
+staticfiles/
+media/
+
+# Archivos de configuración sensibles
+*.secret
+*.key
+
+# VS Code / editores
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

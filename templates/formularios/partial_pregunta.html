@@ -1,0 +1,99 @@
+{% load formulario_extras %}
+
+<div class="col-md-{% if pregunta.tipo_dato == 'TEXTAREA' or pregunta.tipo_dato == 'DIRECCION_US' or pregunta.tipo_dato == 'ARCHIVO' %}12{% else %}6{% endif %}">
+    <label class="form-label fw-bold small text-secondary text-uppercase">{{ pregunta.texto_pregunta }}{% if pregunta.es_requerida %}<span class="text-danger">*</span>{% endif %}</label>
+    
+    {% with field_id="q_"|add_str:pregunta.id|add_str:"_"|add_str:index %}
+    
+    {% if pregunta.tipo_dato == 'TEXT' or pregunta.tipo_dato == 'EMAIL' or pregunta.tipo_dato == 'NUMERO' %}
+        <input type="{% if pregunta.tipo_dato == 'EMAIL' %}email{% elif pregunta.tipo_dato == 'NUMERO' %}number{% else %}text{% endif %}" 
+               name="{{ field_id }}" 
+               class="form-control rounded-3" 
+               value="{{ respuesta.datos|get_value:field_id }}"
+               {% if pregunta.es_requerida %}required{% endif %}
+               {% if readonly %}disabled{% endif %}>
+
+    {% elif pregunta.tipo_dato == 'TEXTAREA' %}
+        <textarea name="{{ field_id }}" class="form-control rounded-3" rows="3" {% if pregunta.es_requerida %}required{% endif %} {% if readonly %}disabled{% endif %}>{{ respuesta.datos|get_value:field_id }}</textarea>
+
+    {% elif pregunta.tipo_dato == 'FECHA' %}
+        <input type="date" name="{{ field_id }}" class="form-control rounded-3" value="{{ respuesta.datos|get_value:field_id }}" {% if pregunta.es_requerida %}required{% endif %} {% if readonly %}disabled{% endif %}>
+
+    {% elif pregunta.tipo_dato == 'SELECT' %}
+        <select name="{{ field_id }}" class="form-select rounded-3" {% if pregunta.es_requerida %}required{% endif %} {% if readonly %}disabled{% endif %}>
+            <option value="">Seleccione...</option>
+            {% for opcion in pregunta.opciones|split:"," %}
+                <option value="{{ opcion|trim }}" {% if respuesta.datos|get_value:field_id == opcion|trim %}selected{% endif %}>{{ opcion|trim }}</option>
+            {% endfor %}
+        </select>
+
+    {% elif pregunta.tipo_dato == 'PAIS' %}
+        <select name="{{ field_id }}" class="form-select rounded-3" {% if pregunta.es_requerida %}required{% endif %} {% if readonly %}disabled{% endif %}>
+            <option value="">Seleccione País...</option>
+            <option value="US" {% if respuesta.datos|get_value:field_id == 'US' %}selected{% endif %}>Estados Unidos</option>
+            <option value="MX" {% if respuesta.datos|get_value:field_id == 'MX' %}selected{% endif %}>México</option>
+            <option value="DO" {% if respuesta.datos|get_value:field_id == 'DO' %}selected{% endif %}>República Dominicana</option>
+            <option value="CO" {% if respuesta.datos|get_value:field_id == 'CO' %}selected{% endif %}>Colombia</option>
+            <option value="VE" {% if respuesta.datos|get_value:field_id == 'VE' %}selected{% endif %}>Venezuela</option>
+            <option value="ES" {% if respuesta.datos|get_value:field_id == 'ES' %}selected{% endif %}>España</option>
+        </select>
+
+    {% elif pregunta.tipo_dato == 'ESTADO_US' %}
+        <select name="{{ field_id }}" class="form-select rounded-3" {% if pregunta.es_requerida %}required{% endif %} {% if readonly %}disabled{% endif %}>
+            <option value="">Seleccione Estado...</option>
+            <option value="FL" {% if respuesta.datos|get_value:field_id == 'FL' %}selected{% endif %}>Florida</option>
+            <option value="NY" {% if respuesta.datos|get_value:field_id == 'NY' %}selected{% endif %}>New York</option>
+            <option value="TX" {% if respuesta.datos|get_value:field_id == 'TX' %}selected{% endif %}>Texas</option>
+            <option value="CA" {% if respuesta.datos|get_value:field_id == 'CA' %}selected{% endif %}>California</option>
+            <option value="NJ" {% if respuesta.datos|get_value:field_id == 'NJ' %}selected{% endif %}>New Jersey</option>
+        </select>
+
+    {% elif pregunta.tipo_dato == 'DIRECCION_US' %}
+        <div class="row g-2 border rounded-3 p-3 bg-white">
+            <div class="col-12">
+                {% with key=field_id|add_str:'_street' %}
+                <input type="text" name="{{ key }}" class="form-control" placeholder="Calle y Número" value="{{ respuesta.datos|get_value:key }}" {% if readonly %}disabled{% endif %}>
+                {% endwith %}
+            </div>
+            <div class="col-md-6">
+                {% with key=field_id|add_str:'_apt' %}
+                <input type="text" name="{{ key }}" class="form-control" placeholder="Apt/Piso" value="{{ respuesta.datos|get_value:key }}" {% if readonly %}disabled{% endif %}>
+                {% endwith %}
+            </div>
+            <div class="col-md-6">
+                {% with key=field_id|add_str:'_city' %}
+                <input type="text" name="{{ key }}" class="form-control" placeholder="Ciudad" value="{{ respuesta.datos|get_value:key }}" {% if readonly %}disabled{% endif %}>
+                {% endwith %}
+            </div>
+            <div class="col-md-6">
+                {% with key=field_id|add_str:'_state' %}
+                <input type="text" name="{{ key }}" class="form-control" placeholder="Estado" value="{{ respuesta.datos|get_value:key }}" {% if readonly %}disabled{% endif %}>
+                {% endwith %}
+            </div>
+            <div class="col-md-6">
+                {% with key=field_id|add_str:'_zip' %}
+                <input type="text" name="{{ key }}" class="form-control" placeholder="ZIP" value="{{ respuesta.datos|get_value:key }}" {% if readonly %}disabled{% endif %}>
+                {% endwith %}
+            </div>
+        </div>
+
+    {% elif pregunta.tipo_dato == 'ARCHIVO' %}
+        <div class="p-3 border-dashed rounded-3 bg-light text-center">
+            {% with file_url=respuesta.datos|get_value:field_id %}
+                {% if file_url %}
+                    <div class="mb-2">
+                        <i class="fa-solid fa-file-circle-check text-success fs-3"></i>
+                        <div class="small mt-1"><a href="{{ file_url }}" target="_blank">Ver archivo actual</a></div>
+                    </div>
+                {% endif %}
+                <input type="file" name="{{ field_id }}" class="form-control" {% if readonly %}disabled{% endif %}>
+            {% endwith %}
+        </div>
+    {% endif %}
+    
+    {% if pregunta.ayuda_visual %}
+        <div class="form-text small"><i class="fa-solid fa-circle-question opacity-50"></i> {{ pregunta.ayuda_visual }}</div>
+    {% endif %}
+    
+    {% endwith %}
+</div>

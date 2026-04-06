@@ -1,0 +1,193 @@
+
+:root {
+    --primary: #2563eb;
+    --primary-indigo: #4338ca;
+    --accent-orange: #f59e0b;
+    --accent-pink: #ec4899;
+    --accent-cyan: #06b6d4;
+    --bg-light: #ffffff;
+    --white: #ffffff;
+    --glass: rgba(255, 255, 255, 0.9);
+    --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    --glow: 0 0 15px rgba(37, 99, 235, 0.3);
+}
+
+body.landing-page {
+    font-family: 'Outfit', 'Inter', sans-serif;
+    background-color: var(--bg-light);
+    color: #1e293b;
+    overflow-x: hidden;
+}
+
+.vibrant-gradient {
+    background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+}
+
+.landing-nav {
+    background: var(--glass);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.logo-text {
+    font-size: 1.7rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--primary), var(--accent-orange));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.btn-primary-custom {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-indigo) 100%);
+    color: white;
+    border: none;
+    padding: 14px 32px;
+    border-radius: 14px;
+    font-weight: 700;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-decoration: none;
+    display: inline-block;
+    box-shadow: var(--glow);
+}
+
+.btn-primary-custom:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 15px 30px -5px rgba(37, 99, 235, 0.4);
+    color: white;
+}
+
+.btn-whatsapp {
+    background-color: #25d366;
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 12px;
+    transition: all 0.3s;
+}
+
+.btn-whatsapp:hover {
+    background-color: #128c7e;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.btn-glass {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.hero-section {
+    padding: 100px 0;
+    background: radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.08), transparent 40%),
+                radial-gradient(circle at 100% 100%, rgba(245, 158, 11, 0.05), transparent 40%);
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-headline {
+    font-size: 4.8rem;
+    font-weight: 900;
+    line-height: 1.02;
+    margin-bottom: 28px;
+    letter-spacing: -0.04em;
+    color: #1e293b;
+}
+
+.hero-subheadline {
+    font-size: 1.45rem;
+    color: #475569;
+    margin-bottom: 48px;
+    line-height: 1.5;
+    max-width: 90%;
+}
+
+.hero-image-panoramic {
+    position: relative;
+    z-index: 10;
+}
+
+.hero-image-panoramic img {
+    width: 140%; /* Cinematic overflow */
+    margin-left: 0;
+    border-radius: 24px;
+    box-shadow: 0 80px 150px -30px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-image-panoramic:hover img {
+    transform: scale(1.03) translateX(10px);
+}
+
+.feature-card {
+    background: white;
+    padding: 50px;
+    border-radius: 32px;
+    border: 1px solid rgba(0, 0, 0, 0.03);
+    height: 100%;
+    transition: all 0.4s ease;
+    font-size: 1.15rem;
+}
+
+.feature-card:hover {
+    transform: translateY(-12px);
+    box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.08);
+}
+
+.feature-icon {
+    width: 80px;
+    height: 80px;
+    background: #f0f9ff;
+    color: #0ea5e9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 24px;
+    font-size: 2rem;
+    margin-bottom: 32px;
+}
+
+.feature-icon.i-purple { background: #f5f3ff; color: #8b5cf6; }
+.feature-icon.i-orange { background: #fff7ed; color: #f59e0b; }
+.feature-icon.i-cyan { background: #ecfeff; color: #0891b2; }
+.feature-icon.i-pink { background: #fdf2f8; color: #db2777; }
+.feature-icon.i-indigo { background: #eef2ff; color: #4f46e5; }
+
+.step-number {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--primary), var(--accent-cyan));
+    color: white;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    margin-bottom: 24px;
+    font-size: 1.25rem;
+}
+
+.vibrant-bg {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
+}
+
+[data-en] { display: none !important; }
+body.en [data-es] { display: none !important; }
+body.en [data-en] { display: inline-block !important; }
+
+/* Desktop Login Card Floating */
+.login-card-landing {
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 50px 100px -20px rgba(0,0,0,0.25);
+    z-index: 10;
+}
+
+@media (max-width: 992px) {
+    .hero-headline { font-size: 2.8rem; }
+    .hero-section { padding: 60px 0; }
+}

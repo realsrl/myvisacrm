@@ -1,0 +1,408 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard | Visa Management{% endblock %}
+
+{% block content %}
+
+{# Flash messages #}
+{% if messages %}
+<div class="mb-4">
+  {% for message in messages %}
+    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show border-0 rounded-3 shadow-sm" role="alert">
+      {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-end">
+  <div>
+    <h2 class="fw-bold mb-1">Dashboard de Urgencias</h2>
+    <p class="text-muted mb-0">Preparador: <strong>{{ user.username }}</strong></p>
+  </div>
+  
+  <div class="d-flex align-items-end gap-3 mt-3 mt-md-0">
+    {# Nuevo Caso Button #}
+    {% if plan_warning != 'danger' %}
+    <button type="button" class="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#nuevoCasoModal">
+      <i class="fa-solid fa-plus me-1"></i> Nuevo Caso
+    </button>
+    {% else %}
+    <button type="button" class="btn btn-secondary rounded-pill px-4 py-2 fw-bold" disabled title="Límite de casos alcanzado">
+      <i class="fa-solid fa-lock me-1"></i> Nuevo Caso
+    </button>
+    {% endif %}
+
+    {# Plan Limit Widget #}
+    <div style="min-width: 300px;">
+      <div class="d-flex justify-content-between mb-1 small fw-bold">
+          <span>Uso de Plan: {{ agencia.plan }}</span>
+          <span>{{ casos_activos }} / {{ limites.casos }} casos</span>
+      </div>
+      <div class="progress rounded-pill shadow-sm" style="height: 10px;">
+        <div class="progress-bar bg-{{ plan_warning|default:'success' }} progress-bar-striped progress-bar-animated" role="progressbar" style="width: {{ porcentaje_uso|floatformat:0 }}%;"></div>
+      </div>
+      {% if plan_warning == 'danger' %}
+          <div class="text-danger small mt-1 fw-bold"><i class="fa-solid fa-circle-exclamation me-1"></i> ¡Límite alcanzado! No puedes crear más casos.</div>
+      {% elif plan_warning == 'warning' %}
+          <div class="text-warning small mt-1 fw-bold"><i class="fa-solid fa-triangle-exclamation me-1"></i> Estás al {{ porcentaje_uso|floatformat:0 }}% de tu límite.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{# ── MODAL: NUEVO CASO ───────────────────────────────────────────── #}
+<div class="modal fade" id="nuevoCasoModal" tabindex="-1" aria-labelledby="nuevoCasoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header bg-primary text-white rounded-top-4 py-3 px-4">
+        <h5 class="modal-title fw-bold" id="nuevoCasoLabel"><i class="fa-solid fa-folder-plus me-2"></i>Crear Nuevo Caso</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="{% url 'crear_caso' %}">
+        {% csrf_token %}
+        <div class="modal-body px-4 py-4">
+
+          {# ─ Section 1: Case Info ─ #}
+          <div class="mb-4">
+            <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-briefcase me-2"></i>Información del Caso</h6>
+            <div class="row g-3">
+              <div class="col-12">
+                <label for="id_titulo" class="form-label small fw-bold">{{ nuevo_caso_form.titulo.label }}</label>
+                {{ nuevo_caso_form.titulo }}
+              </div>
+              <div class="col-md-6">
+                <label for="id_tipo" class="form-label small fw-bold">{{ nuevo_caso_form.tipo.label }}</label>
+                {{ nuevo_caso_form.tipo }}
+              </div>
+              <div class="col-md-6">
+                <label for="id_sub_tipo" class="form-label small fw-bold">{{ nuevo_caso_form.sub_tipo.label }}</label>
+                {{ nuevo_caso_form.sub_tipo }}
+              </div>
+              <div class="col-md-6">
+                <label for="id_preparador" class="form-label small fw-bold">{{ nuevo_caso_form.preparador.label }}</label>
+                {{ nuevo_caso_form.preparador }}
+                <div class="form-text"><i class="fa-solid fa-info-circle me-1"></i>Solo miembros del equipo de tu agencia.</div>
+              </div>
+              <div class="col-md-6">
+                <label for="id_status_inicial" class="form-label small fw-bold">{{ nuevo_caso_form.status_inicial.label }}</label>
+                {{ nuevo_caso_form.status_inicial }}
+              </div>
+            </div>
+          </div>
+
+          <hr class="my-3">
+
+          {# ─ Section 2: Client Access ─ #}
+          <div class="mb-4">
+            <h6 class="fw-bold text-success mb-3"><i class="fa-solid fa-user-plus me-2"></i>Acceso del Cliente al Portal</h6>
+            <p class="text-muted small mb-3">Se creará un usuario para que el cliente pueda entrar a su portal y ver el estado de su caso.</p>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="id_nombre_cliente" class="form-label small fw-bold">{{ nuevo_caso_form.nombre_cliente.label }}</label>
+                {{ nuevo_caso_form.nombre_cliente }}
+              </div>
+              <div class="col-md-6">
+                <label for="id_email_cliente" class="form-label small fw-bold">{{ nuevo_caso_form.email_cliente.label }}</label>
+                {{ nuevo_caso_form.email_cliente }}
+              </div>
+              <div class="col-md-6">
+                <label for="id_username_cliente" class="form-label small fw-bold">{{ nuevo_caso_form.username_cliente.label }}</label>
+                {{ nuevo_caso_form.username_cliente }}
+              </div>
+              <div class="col-md-6">
+                <label for="id_password_cliente" class="form-label small fw-bold">{{ nuevo_caso_form.password_cliente.label }}</label>
+                {{ nuevo_caso_form.password_cliente }}
+              </div>
+            </div>
+            <div class="form-text mt-2"><i class="fa-solid fa-shield-halved me-1 text-warning"></i> Las credenciales del cliente se guardarán automáticamente en la <strong>Bóveda Cifrada</strong> del caso.</div>
+          </div>
+
+        </div>
+        <div class="modal-footer bg-light rounded-bottom-4 px-4 py-3">
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+            <i class="fa-solid fa-check me-1"></i> Crear Caso
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<div class="row g-4">
+
+  {# ── ACTIVIDADES VENCIDAS ──────────────────────────────────────── #}
+  <div class="col-xl-3 col-md-6">
+    <div class="card h-100 border-0 shadow-sm rounded-4">
+      <div class="card-header bg-danger bg-opacity-10 border-0 rounded-top-4 d-flex justify-content-between align-items-center py-3 px-4">
+        <h6 class="fw-bold text-danger mb-0 small"><i class="fa-solid fa-triangle-exclamation me-2"></i> Vencidas</h6>
+        <span class="badge bg-danger rounded-pill">{{ vencidas|length }}</span>
+      </div>
+      <div class="card-body p-3">
+        {% if vencidas %}
+          <ul class="list-group list-group-flush">
+            {% for act in vencidas %}
+              <li class="list-group-item px-0 py-2 border-light">
+                <h6 class="mb-1 fw-bold small text-truncate" title="{{ act.titulo }}">{{ act.titulo }}</h6>
+                <div class="d-flex justify-content-between align-items-center">
+                  <a href="{% url 'case_detail' act.caso.pk %}" class="text-muted small text-decoration-none text-truncate" style="max-width:70%"><i class="fa-solid fa-folder fa-xs me-1"></i>{{ act.caso.titulo }}</a>
+                  <span class="badge bg-danger-subtle text-danger rounded-pill" style="font-size:.65rem;">{{ act.fecha_vencimiento|date:"d/m" }}</span>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="text-center text-muted py-4 small">Sin tareas vencidas 🎉</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── TAREAS DE HOY ──────────────────────────────────────────────── #}
+  <div class="col-xl-3 col-md-6">
+    <div class="card h-100 border-0 shadow-sm rounded-4">
+      <div class="card-header bg-warning bg-opacity-10 border-0 rounded-top-4 d-flex justify-content-between align-items-center py-3 px-4">
+        <h6 class="fw-bold text-warning mb-0 small"><i class="fa-solid fa-calendar-day me-2"></i> Para Hoy</h6>
+        <span class="badge bg-warning text-dark rounded-pill">{{ tareas_hoy|length }}</span>
+      </div>
+      <div class="card-body p-3">
+        {% if tareas_hoy %}
+          <ul class="list-group list-group-flush">
+            {% for act in tareas_hoy %}
+              <li class="list-group-item px-0 py-2 border-light">
+                <h6 class="mb-1 fw-bold small text-truncate">{{ act.titulo }}</h6>
+                <div class="d-flex justify-content-between align-items-center">
+                  <a href="{% url 'case_detail' act.caso.pk %}" class="text-muted small text-decoration-none text-truncate"><i class="fa-solid fa-folder fa-xs me-1"></i>{{ act.caso.titulo }}</a>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="text-center text-muted py-4 small">Nada para hoy ☕</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── PRÓXIMAS A VENCER ─────────────────────────────────────────── #}
+  <div class="col-xl-3 col-md-6">
+    <div class="card h-100 border-0 shadow-sm rounded-4">
+      <div class="card-header bg-info bg-opacity-10 border-0 rounded-top-4 d-flex justify-content-between align-items-center py-3 px-4">
+        <h6 class="fw-bold text-info mb-0 small"><i class="fa-solid fa-clock-rotate-left me-2"></i> Próximas ({{ config_dash.dias_proximos_vencer }}d)</h6>
+        <span class="badge bg-info text-white rounded-pill">{{ proximas_vencer|length }}</span>
+      </div>
+      <div class="card-body p-3">
+        {% if proximas_vencer %}
+          <ul class="list-group list-group-flush">
+            {% for act in proximas_vencer %}
+              <li class="list-group-item px-0 py-2 border-light">
+                <h6 class="mb-1 fw-bold small text-truncate">{{ act.titulo }}</h6>
+                <div class="d-flex justify-content-between align-items-center">
+                  <a href="{% url 'case_detail' act.caso.pk %}" class="text-muted small text-decoration-none text-truncate"><i class="fa-solid fa-folder fa-xs me-1"></i>{{ act.caso.titulo }}</a>
+                  <span class="text-muted" style="font-size:0.65rem;">{{ act.fecha_vencimiento|date:"d/m" }}</span>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="text-center text-muted py-4 small">Sin tareas próximas.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── MENSAJES SIN RESPONDER ────────────────────────────────────── #}
+  <div class="col-xl-3 col-md-6">
+    <div class="card h-100 border-0 shadow-sm rounded-4">
+      <div class="card-header bg-primary bg-opacity-10 border-0 rounded-top-4 d-flex justify-content-between align-items-center py-3 px-4">
+        <h6 class="fw-bold text-primary mb-0 small"><i class="fa-regular fa-comment-dots me-2"></i> Mensajes</h6>
+        <span class="badge bg-primary rounded-pill">{{ threads_sin_respuesta|length }}</span>
+      </div>
+      <div class="card-body p-3 overflow-auto" style="max-height: 250px;">
+        {% if threads_sin_respuesta %}
+          {% for thread in threads_sin_respuesta %}
+            <div class="border rounded-3 p-2 mb-2 bg-light bg-opacity-50">
+              <div class="d-flex justify-content-between align-items-start mb-1">
+                <a href="{% url 'case_detail' thread.caso.pk %}" class="fw-bold small text-decoration-none text-dark text-truncate">{{ thread.caso.titulo }}</a>
+              </div>
+              <p class="text-muted mb-2 text-truncate" style="font-size:0.7rem;">"{{ thread.ultimo_mensaje.contenido }}"</p>
+              <form method="post" class="input-group input-group-sm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="dashboard_reply">
+                <input type="hidden" name="caso_pk" value="{{ thread.caso.pk }}">
+                <input type="text" name="contenido" class="form-control" placeholder="Responde..." required>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane fa-xs"></i></button>
+              </form>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-center text-muted py-4 small">Día tranquilo 🕊️</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── LISTA COMPLETA DE CASOS ────────────────────────────────────── #}
+  <div class="col-12 mt-4">
+    <div class="card border-0 shadow-sm rounded-4">
+      <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <h5 class="fw-bold mb-0"><i class="fa-solid fa-list-check text-primary me-2"></i> 
+            {% if ver_archivados %}Casos Archivados{% else %}Mis Casos Asignados{% endif %}
+        </h5>
+        
+        <form method="get" class="d-flex gap-2 flex-grow-1" style="max-width: 400px;">
+            {% if ver_archivados %}<input type="hidden" name="ver" value="archivados">{% endif %}
+            <div class="input-group input-group-sm">
+                <input type="text" name="q" class="form-control rounded-start-pill px-3" placeholder="Buscar por nombre, caso o usuario..." value="{{ request.GET.q|default:'' }}">
+                <button type="submit" class="btn btn-primary rounded-end-pill px-3"><i class="fa-solid fa-magnifying-glass"></i></button>
+            </div>
+            {% if request.GET.q %}
+                <a href="?{% if ver_archivados %}ver=archivados{% endif %}" class="btn btn-sm btn-outline-secondary rounded-pill d-flex align-items-center"><i class="fa-solid fa-xmark"></i></a>
+            {% endif %}
+        </form>
+
+        <div class="d-flex gap-2">
+            {% if ver_archivados %}
+                <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary rounded-pill">Ver Activos</a>
+            {% else %}
+                <a href="?ver=archivados" class="btn btn-sm btn-outline-secondary rounded-pill">Ver Archivados</a>
+            {% endif %}
+            <a href="{% url 'funnel' %}" class="btn btn-sm btn-outline-primary rounded-pill">Ver Modo Kanban</a>
+        </div>
+      </div>
+      <div class="card-body px-4 pb-4">
+        {% if page_obj %}
+          <div class="table-responsive">
+            <table class="table table-hover align-middle border-top border-light-subtle">
+              <thead class="table-light">
+                <tr class="small text-uppercase text-muted">
+                  <th>Código</th>
+                  <th>Titular / Caso</th>
+                  <th>Preparador</th>
+                  <th>Fecha Apertura</th>
+                  <th>Estado Actual</th>
+                  <th class="text-end">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="small">
+                {% for c in page_obj %}
+                  <tr {% if c.esta_archivado %}class="opacity-75"{% endif %}>
+                    <td><span class="badge bg-light text-dark border">{{ c.pk|stringformat:"04d" }}</span></td>
+                    <td>
+                      <div class="fw-bold text-dark">{{ c.beneficiario_principal.get_full_name|default:c.beneficiario_principal.username }}</div>
+                      <div class="text-muted" style="font-size:0.75rem;">{{ c.titulo }} · {{ c.get_tipo_display }}</div>
+                    </td>
+                    <td>
+                        <span class="text-muted small fw-semibold">{{ c.preparador.get_full_name|default:c.preparador.username }}</span>
+                    </td>
+                    <td>{{ c.fecha_apertura|date:"d/m/Y" }}</td>
+                    <td>
+                        {% if c.esta_archivado %}
+                            <span class="badge bg-secondary rounded-pill px-3 py-1">ARCHIVADO</span>
+                        {% else %}
+                            <span class="badge rounded-pill px-3 py-1" style="background-color:{{ c.status_actual.color }}20; color:{{ c.status_actual.color }}; border: 1px solid {{ c.status_actual.color }}40;">
+                            {{ c.status_actual.nombre }}
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                      <div class="btn-group">
+                        <a href="{% url 'case_detail' c.pk %}" class="btn btn-sm btn-primary px-3 rounded-start-pill fw-bold">
+                          <i class="fa-solid fa-eye me-1"></i> Detalle
+                        </a>
+                        {% if not c.esta_archivado %}
+                        <a href="{% url 'archive_case' c.pk %}" class="btn btn-sm btn-outline-danger px-3 rounded-end-pill" title="Archivar">
+                          <i class="fa-solid fa-box-archive"></i>
+                        </a>
+                        {% endif %}
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          
+          {# Pagination #}
+          {% if page_obj.has_other_pages %}
+          <nav class="mt-4">
+            <ul class="pagination pagination-sm justify-content-center">
+              {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link rounded-pill me-2 border-0 shadow-sm" href="?page={{ page_obj.previous_page_number }}{% if ver_archivados %}&ver=archivados{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Anterior</a></li>
+              {% endif %}
+              
+              <li class="page-item active text-white"><span class="page-link rounded-pill border-0 shadow-sm mx-1 px-3">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+
+              {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link rounded-pill ms-2 border-0 shadow-sm" href="?page={{ page_obj.next_page_number }}{% if ver_archivados %}&ver=archivados{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Siguiente</a></li>
+              {% endif %}
+            </ul>
+          </nav>
+          {% endif %}
+
+        {% else %}
+          <div class="text-center py-5 text-muted">
+            <i class="fa-solid fa-magnifying-glass fa-3x mb-3 opacity-25"></i>
+            <p>No se encontraron casos que coincidan con tu búsqueda.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── DOCUMENTOS RECIENTES ──────────────────────────────────────── #}
+  <div class="col-12 mt-4">
+    <div class="card border-0 shadow-sm rounded-4">
+      <div class="card-header bg-success bg-opacity-10 border-0 rounded-top-4 d-flex justify-content-between align-items-center py-3 px-4">
+        <h6 class="fw-bold text-success mb-0"><i class="fa-solid fa-file-invoice me-2"></i> Documentos Recientes en sus Casos</h6>
+        <span class="badge bg-success rounded-pill">{{ documentos_recientes|length }}</span>
+      </div>
+      <div class="card-body p-4">
+        {% if documentos_recientes %}
+          <div class="row g-3">
+            {% for doc in documentos_recientes %}
+              <div class="col-md-6 col-lg-4 col-xl-3">
+                <div class="border rounded-3 p-3 bg-white hover-lift">
+                  <div class="d-flex align-items-center mb-2">
+                    <div class="me-3">
+                        {% with ext=doc.archivo.name|lower %}
+                          {% if ".pdf" in ext %}<i class="fa-solid fa-file-pdf text-danger fa-xl"></i>
+                          {% elif ".doc" in ext %}<i class="fa-solid fa-file-word text-primary fa-xl"></i>
+                          {% elif ".jpg" in ext or ".jpeg" in ext or ".png" in ext %}<i class="fa-solid fa-file-image text-warning fa-xl"></i>
+                          {% else %}<i class="fa-solid fa-file text-secondary fa-xl"></i>
+                          {% endif %}
+                        {% endwith %}
+                    </div>
+                    <div class="flex-grow-1 overflow-hidden">
+                      <h6 class="mb-0 fw-bold small text-truncate">{{ doc.nombre_documento }}</h6>
+                      <a href="{% url 'case_detail' doc.caso.pk %}" class="text-muted small text-decoration-none d-block text-truncate">{{ doc.caso.titulo }}</a>
+                    </div>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+                    <span class="text-muted" style="font-size:0.7rem;">{{ doc.fecha_subida|date:"d M, H:i" }}</span>
+                    <a href="{{ doc.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-success py-0 px-2 small">
+                        <i class="fa-solid fa-download fa-xs"></i>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-4 text-muted">
+            <i class="fa-regular fa-folder-open fa-2x mb-2 opacity-50"></i>
+            <p class="small mb-0">Sin documentos recientes.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+<style>
+    .hover-lift { transition: transform 0.2s, box-shadow 0.2s; }
+    .hover-lift:hover { transform: translateY(-3px); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+</style>
+{% endblock %}

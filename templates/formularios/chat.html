@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Chat: {{ caso.titulo }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center h-100">
+    <div class="col-lg-8">
+        <div class="card shadow border-0" style="height: 80vh;">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+                <div>
+                    <h5 class="mb-0 fw-bold"><i class="fa-solid fa-comments me-2"></i> Mensajería Interna</h5>
+                    <small class="opacity-75">Caso: {{ caso.titulo }}</small>
+                </div>
+                <a href="{% url 'client_portal' if not user.is_staff else 'case_detail' pk=caso.pk %}" class="btn btn-sm btn-outline-light">
+                    <i class="fa-solid fa-arrow-left"></i> Volver
+                </a>
+            </div>
+            
+            <div class="card-body overflow-auto p-4" id="chat-box" style="background-color: #f1f3f5;">
+                {% for msg in mensajes %}
+                    <div class="d-flex {% if msg.emisor == user %}justify-content-end{% else %}justify-content-start{% endif %} mb-3">
+                        <div class="message-bubble p-3 rounded-4 shadow-sm {% if msg.emisor == user %}bg-primary text-white{% else %}bg-white text-dark{% endif %}" style="max-width: 75%;">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <strong class="small">{{ msg.emisor.get_full_name|default:msg.emisor.username }}</strong>
+                                <span class="small ms-3 opacity-75">{{ msg.fecha_hora|date:"H:i" }}</span>
+                            </div>
+                            <p class="mb-0">{{ msg.cuerpo }}</p>
+                            {% if msg.adjunto %}
+                                <div class="mt-2 pt-2 border-top border-opacity-25 small">
+                                    <a href="{{ msg.adjunto.url }}" target="_blank" class="{% if msg.emisor == user %}text-white{% else %}text-primary{% endif %} text-decoration-none">
+                                        <i class="fa-solid fa-paperclip me-1"></i> Ver adjunto
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="text-center py-5 opacity-50">
+                        <i class="fa-solid fa-message-slash fs-1 mb-3"></i>
+                        <p>No hay mensajes aún. Inicia la conversación.</p>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <div class="card-footer bg-white p-3 border-top">
+                <form method="post" enctype="multipart/form-data" class="row g-2">
+                    {% csrf_token %}
+                    <div class="col-auto">
+                        <label for="adjunto" class="btn btn-outline-secondary" title="Adjuntar archivo">
+                            <i class="fa-solid fa-plus"></i>
+                            <input type="file" name="adjunto" id="adjunto" class="d-none">
+                        </label>
+                    </div>
+                    <div class="col">
+                        <input type="text" name="mensaje" class="form-control rounded-pill px-3" placeholder="Escribe un mensaje..." required autocomplete="off">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary rounded-circle shadow-sm">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .message-bubble { position: relative; }
+    #chat-box::-webkit-scrollbar { width: 6px; }
+    #chat-box::-webkit-scrollbar-track { background: transparent; }
+    #chat-box::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 10px; }
+    #chat-box { scroll-behavior: smooth; }
+</style>
+
+{% block extra_js %}
+<script>
+    const chatBox = document.getElementById('chat-box');
+    chatBox.scrollTop = chatBox.scrollHeight;
+</script>
+{% endblock %}
+{% endblock %}

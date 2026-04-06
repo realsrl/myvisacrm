@@ -1,0 +1,71 @@
+/* ============================================
+   MyVisaCrm.com - Custom Admin Styles
+   ============================================ */
+
+/* Fix invisible navbar icons - make them always visible */
+#jazzy-navbar .navbar-nav .nav-link {
+    color: #2c3e50 !important;
+}
+
+#jazzy-navbar .navbar-nav .nav-link i {
+    color: #2c3e50 !important;
+    font-size: 1.1rem;
+}
+
+/* For dark navbar variants */
+.navbar-dark .navbar-nav .nav-link,
+.navbar-dark .navbar-nav .nav-link i {
+    color: #fff !important;
+}
+
+/* User dropdown trigger - make icon clearly visible */
+#jazzy-navbar .nav-item .nav-link[title] i.fa-user {
+    color: #2c3e50 !important;
+    font-size: 1.2rem;
+}
+
+/* ============================================
+   Prominent Power Button for Logout
+   ============================================ */
+.logout-power-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    border: none;
+    color: #fff !important;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 4px 4px 4px 10px;
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.35);
+    vertical-align: middle;
+}
+
+.logout-power-btn:hover {
+    background: linear-gradient(135deg, #ff5544, #e74c3c);
+    color: #fff !important;
+    transform: scale(1.15);
+    box-shadow: 0 4px 16px rgba(231, 76, 60, 0.55);
+}
+
+.logout-power-btn:active {
+    transform: scale(0.95);
+}
+
+.logout-power-btn i {
+    color: #fff !important;
+}
+
+/* User dropdown menu styling */
+#jazzy-usermenu {
+    min-width: 200px;
+}
+
+#jazzy-usermenu .dropdown-item i {
+    color: #555;
+}

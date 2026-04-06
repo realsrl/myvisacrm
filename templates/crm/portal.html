@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Mi Portal | Visa Management{% endblock %}
+
+{% block content %}
+
+{# ─── FLASH MESSAGES ─────────────────────────────────────────────── #}
+{% if messages %}
+  <div class="mt-1 mb-4">
+    {% for message in messages %}
+      <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow-sm border-0 rounded-3" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{# ─── HERO HEADER ─────────────────────────────────────────────────── #}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="fw-bold mb-1">Mi Portal de Inmigración</h2>
+    <p class="text-muted mb-0">Hola, <strong>{{ user.get_full_name|default:user.username }}</strong> 👋 — Aquí puedes seguir tu caso en tiempo real.</p>
+    
+    {# Case Selector for multiple cases #}
+    {% if casos|length > 1 %}
+    <div class="mt-3">
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-primary dropdown-toggle rounded-pill" type="button" id="caseSelector" data-bs-toggle="dropdown">
+                <i class="fa-solid fa-folder-tree me-1"></i> Cambiar de Caso
+            </button>
+            <ul class="dropdown-menu shadow border-0 rounded-4 p-2" aria-labelledby="caseSelector">
+                {% for c in casos %}
+                <li>
+                    <a class="dropdown-item rounded-3 {% if c.id == caso_actual.id %}active bg-primary{% endif %}" href="?c={{ c.id }}">
+                        <div class="fw-bold text-truncate" style="max-width:250px;">{{ c.titulo }}</div>
+                        <small class="{% if c.id == caso_actual.id %}text-white-50{% else %}text-muted{% endif %}">{{ c.status_actual.nombre }}</small>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+  </div>
+  {% if caso_actual %}
+  <button class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalDocumento" id="btn-subir-doc">
+    <i class="fa-solid fa-cloud-arrow-up me-2"></i> Subir Documento
+  </button>
+  {% endif %}
+</div>
+
+{% if caso_actual %}
+
+{# ─── STATUS BANNER ───────────────────────────────────────────────── #}
+<div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+  <div class="card-body p-0" style="background: linear-gradient(135deg,#0d6efd 0%,#0043a8 100%);">
+    <div class="row align-items-center g-0">
+      <div class="col-md-8 p-4 text-white">
+        <span class="badge bg-white bg-opacity-25 text-white mb-2 rounded-pill px-3">Caso Activo</span>
+        <h3 class="fw-bold mb-1">{{ caso_actual.titulo }}</h3>
+        <p class="mb-0 opacity-75"><i class="fa-solid fa-user-tie me-1"></i> Preparador: {{ caso_actual.preparador.get_full_name|default:caso_actual.preparador.username }}</p>
+      </div>
+      <div class="col-md-4 p-4 text-center text-white">
+        <div class="bg-white bg-opacity-15 rounded-3 p-3 d-inline-block">
+          <div class="small opacity-75 mb-1">Estado Actual</div>
+          <div class="fw-bold fs-5">{{ caso_actual.status_actual.nombre }}</div>
+          <div class="small opacity-75 mt-1">{{ caso_actual.get_tipo_display }} · {{ caso_actual.get_sub_tipo_display }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ─── CONTENT GRID ────────────────────────────────────────────────── #}
+<div class="row g-4">
+
+  {# ── COL IZQUIERDA: ACTUALIZACIONES ──────────────────────────────── #}
+  <div class="col-lg-6">
+    <div class="card h-100 border-0 shadow-sm rounded-4">
+      <div class="card-header bg-white border-0 pt-4 pb-2 px-4">
+        <h5 class="fw-bold mb-0"><i class="fa-regular fa-bell text-info me-2"></i> Actualizaciones de tu Preparador</h5>
+      </div>
+      <div class="card-body px-4 pb-4">
+        {% if caso_actual.actualizaciones.exists %}
+          <div class="timeline-feed">
+            {% for upd in caso_actual.actualizaciones.all %}
+              <div class="d-flex mb-3">
+                <div class="flex-shrink-0 me-3">
+                  <div class="rounded-circle bg-info d-flex align-items-center justify-content-center text-white" style="width:36px;height:36px;">
+                    <i class="fa-solid fa-check fa-xs"></i>
+                  </div>
+                </div>
+                <div class="bg-light rounded-3 p-3 flex-grow-1">
+                  <div class="small text-muted mb-1 fw-semibold">{{ upd.fecha|date:"d M Y, H:i" }}</div>
+                  <p class="mb-0">{{ upd.mensaje }}</p>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-5 text-muted">
+            <i class="fa-regular fa-envelope-open fa-2x mb-2 opacity-50"></i>
+            <p class="mb-0 small">Aún no hay actualizaciones. Tu preparador publicará novedades aquí.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── COL DERECHA: MENSAJERÍA ─────────────────────────────────────── #}
+  <div class="col-lg-6">
+    {% if caso_actual.chat_habilitado %}
+    <div class="card h-100 border-0 shadow-sm rounded-4">
+      <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0"><i class="fa-regular fa-comment-dots text-primary me-2"></i> Mensajes al Preparador</h5>
+        <span class="badge {% if puede_enviar_mensaje %}bg-success{% else %}bg-danger{% endif %} rounded-pill">
+          {{ mensajes_periodo }}/{{ limite_mensajes }} {{ periodo_label }}
+        </span>
+      </div>
+      <div class="card-body px-4 pb-4">
+        <div class="messages-thread mb-3" id="messages-thread" style="max-height:300px; overflow-y:auto;">
+          {% for msg in mensajes_del_caso %}
+            {% if msg.remitente == request.user %}
+              <div class="d-flex justify-content-end mb-2">
+                <div class="bg-primary text-white rounded-3 rounded-end-0 px-3 py-2 shadow-sm" style="max-width:80%;">
+                  <p class="mb-1 small">{{ msg.contenido }}</p>
+                  <div class="text-end opacity-75" style="font-size:0.7rem;">{{ msg.fecha|date:"d/m H:i" }} &nbsp;<i class="fa-solid fa-check{% if msg.leido %}-double{% endif %}"></i></div>
+                </div>
+              </div>
+            {% else %}
+              <div class="d-flex justify-content-start mb-2">
+                <div class="bg-light border rounded-3 rounded-start-0 px-3 py-2 shadow-sm" style="max-width:80%;">
+                  <div class="small fw-bold text-primary mb-1">{{ msg.remitente.get_full_name|default:msg.remitente.username }}</div>
+                  <p class="mb-1 small">{{ msg.contenido }}</p>
+                  <div class="text-muted" style="font-size:0.7rem;">{{ msg.fecha|date:"d/m H:i" }}</div>
+                </div>
+              </div>
+            {% endif %}
+          {% empty %}
+            <div class="text-center py-5 text-muted">
+              <i class="fa-regular fa-comments fa-2x mb-2 opacity-50"></i>
+              <p class="small mb-0">Aún no hay mensajes. Inicia la conversación.</p>
+            </div>
+          {% endfor %}
+        </div>
+        {% if puede_enviar_mensaje %}
+          <form method="post" id="form-mensaje">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="send_message">
+            <div class="input-group">
+              {{ msg_form.contenido }}
+              <button class="btn btn-primary rounded-end px-3" type="submit">
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            </div>
+          </form>
+        {% else %}
+          <div class="alert alert-warning border-0 rounded-3 mb-0 py-2 d-flex align-items-center">
+            <i class="fa-solid fa-clock me-2"></i>
+            <div class="small">Límite alcanzado. Escala disponible en breve.</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="card h-100 border-0 shadow-sm rounded-4">
+      <div class="card-body text-center py-5">
+        <i class="fa-solid fa-comment-slash fa-2x text-muted opacity-50 mb-3"></i>
+        <p class="fw-semibold text-muted mb-0">El chat con el preparador está deshabilitado.</p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── COL COMPLETA: DOCUMENTOS ────────────────────────────────────── #}
+  <div class="col-12">
+    <div class="card border-0 shadow-sm rounded-4">
+      <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0"><i class="fa-solid fa-folder-open text-success me-2"></i> Documentos Compartidos</h5>
+        <span class="badge bg-success rounded-pill">{{ documentos_visibles|length }}</span>
+      </div>
+      <div class="card-body px-4 pb-4">
+        {% if documentos_visibles %}
+          <div class="row g-3">
+            {% for doc in documentos_visibles %}
+              {% if doc.user_can_view or doc.categoria == 'CLIENTE' %}
+              <div class="col-md-6 col-lg-4 col-xl-3">
+                <div class="border rounded-4 p-3 bg-white h-100 d-flex align-items-center gap-3 hover-lift shadow-sm">
+                  <div class="flex-shrink-0">
+                    {% with ext=doc.archivo.name|lower %}
+                      {% if ".pdf" in ext %}<i class="fa-solid fa-file-pdf text-danger fa-2x"></i>
+                      {% elif ".doc" in ext %}<i class="fa-solid fa-file-word text-primary fa-2x"></i>
+                      {% elif ".jpg" in ext or ".jpeg" in ext or ".png" in ext %}<i class="fa-solid fa-file-image text-warning fa-2x"></i>
+                      {% else %}<i class="fa-solid fa-file text-secondary fa-2x"></i>
+                      {% endif %}
+                    {% endwith %}
+                  </div>
+                  <div class="flex-grow-1 overflow-hidden">
+                    <h6 class="mb-0 fw-bold small text-truncate">{{ doc.nombre_documento }}</h6>
+                    <small class="text-muted" style="font-size:0.7rem;">{{ doc.fecha_subida|date:"d M, Y" }}</small>
+                  </div>
+                  <a href="{{ doc.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-success p-1 rounded-circle flex-shrink-0" title="Ver Documento">
+                    <i class="fa-solid fa-eye fa-xs p-1"></i>
+                  </a>
+                </div>
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-5 text-muted">
+            <i class="fa-regular fa-folder-open fa-2x mb-2 opacity-50"></i>
+            <p class="mb-0 small">Aún no hay documentos en tu expediente.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── COL COMPLETA: FORMULARIOS PENDIENTES ─────────────────────────── #}
+  <div class="col-12">
+    <div class="card border-0 shadow-sm rounded-4">
+      <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0"><i class="fa-solid fa-file-signature text-warning me-2"></i> Formularios por Completar</h5>
+        <span class="badge bg-secondary rounded-pill">{{ respuestas_formularios|length }}</span>
+      </div>
+      <div class="card-body px-4 pb-4">
+        {% if respuestas_formularios %}
+          <div class="row g-3">
+            {% for resp in respuestas_formularios %}
+              <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm hover-lift bg-light bg-opacity-50">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                      <h6 class="fw-bold mb-0 text-primary">{{ resp.formulario.nombre }}</h6>
+                      <span class="badge {% if resp.estado == 'BORRADOR' %}bg-warning text-dark{% elif resp.estado == 'ENVIADO' %}bg-success{% else %}bg-danger{% endif %} rounded-pill small">
+                        {{ resp.get_estado_display }}
+                      </span>
+                    </div>
+                    <p class="text-muted small mb-3">{{ resp.formulario.descripcion|truncatechars:100 }}</p>
+                    <div class="d-grid">
+                      <a href="{% url 'formulario_detalle' resp.id %}" class="btn btn-sm {% if resp.solo_lectura %}btn-outline-secondary{% else %}btn-primary{% endif %} rounded-pill fw-bold">
+                        {% if resp.solo_lectura %}<i class="fa-solid fa-eye me-1"></i> Ver Respuestas{% else %}<i class="fa-solid fa-edit me-1"></i> Llenar Formulario{% endif %}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-5 text-muted">
+            <i class="fa-solid fa-clipboard-check fa-2x mb-2 opacity-50"></i>
+            <p class="small mb-0">No tienes formularios pendientes.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>{# /row #}
+
+{% else %}
+<div class="text-center bg-white p-5 rounded-4 shadow-sm my-5">
+  <i class="fa-solid fa-passport fa-4x text-muted opacity-50 mb-4"></i>
+  <h3 class="fw-bold text-dark">Aún no tienes casos asignados</h3>
+  <p class="text-muted">Comunícate con tu asesor para que vincule tu cuenta al expediente.</p>
+</div>
+{% endif %}
+
+{# ─── MODAL: SUBIR DOCUMENTO ──────────────────────────────────────── #}
+{% if caso_actual %}
+<div class="modal fade" id="modalDocumento" tabindex="-1" aria-labelledby="modalDocumentoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow rounded-4">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="upload_doc">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold">
+            <i class="fa-solid fa-cloud-arrow-up text-primary me-2"></i> Subir Documento
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body px-4 py-3">
+          {{ doc_form|crispy }}
+        </div>
+        <div class="modal-footer border-0 pt-0 pb-4 px-4">
+          <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">Subir</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const thread = document.getElementById('messages-thread');
+  if (thread) thread.scrollTop = thread.scrollHeight;
+</script>
+<style>
+  .hover-lift { transition: transform .15s ease, box-shadow .15s ease; }
+  .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.1) !important; }
+  .timeline-feed { max-height: 350px; overflow-y: auto; padding-right: 4px; }
+  .messages-thread::-webkit-scrollbar, .timeline-feed::-webkit-scrollbar { width: 4px; }
+  .messages-thread::-webkit-scrollbar-thumb, .timeline-feed::-webkit-scrollbar-thumb { background: #dee2e6; border-radius: 10px; }
+</style>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Archivar Caso | Visa Power CRM{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="bg-danger py-4 text-center">
+                    <i class="fa-solid fa-box-archive fa-3x text-white mb-2"></i>
+                </div>
+                <div class="card-body p-5 text-center">
+                    <h2 class="fw-bold mb-3">¿Archivar Caso?</h2>
+                    <p class="text-muted mb-4 text-start">
+                        Estás a punto de archivar el caso <strong>{{ caso.titulo }}</strong>. 
+                        <br><br>
+                        <i class="fa-solid fa-circle-info text-info me-1"></i> 
+                        <strong>Reglas de Archivo:</strong>
+                        <ul class="text-start small text-muted">
+                            <li>El caso ya <strong>no contará</strong> para el límite de casos de tu plan.</li>
+                            <li>No se podrá reabrir ni editar en el futuro.</li>
+                            <li>No se podrán agregar actualizaciones ni documentos.</li>
+                            <li>Solo se podrán descargar los documentos existentes.</li>
+                        </ul>
+                    </p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger btn-lg rounded-pill fw-bold">
+                                Sí, archivar ahora
+                            </button>
+                            <a href="{% url 'case_detail' caso.pk %}" class="btn btn-link text-muted text-decoration-none">
+                                Cancelar y volver
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
