@@ -105,7 +105,7 @@
                     <strong class="text-warning">agency</strong> 
                     <span class="text-white-50 mx-2">|</span>
                     <span class="text-white-50 me-2"><span data-es>Contraseña:</span><span data-en>Password:</span></span>
-                    <strong class="text-warning">agency123</strong>
+                    <strong class="text-warning">agency123456</strong>
                 </div>
             </div>
             <button type="button" class="btn btn-primary-custom btn-sm mt-3 fw-bold px-4 shadow" data-bs-toggle="modal" data-bs-target="#loginModal">
@@ -235,8 +235,8 @@
                 </div>
                 <div class="modal-body p-4 bg-light">
                     <p class="text-center text-muted small mb-4">
-                        <span data-es><strong>Usuario de prueba:</strong> agency &nbsp;|&nbsp; <strong>Pass:</strong> agency123<br><br>ó<br><br>ingresa tu usuario y contraseña para ir a tu cuenta.</span>
-                        <span data-en><strong>Test user:</strong> agency &nbsp;|&nbsp; <strong>Pass:</strong> agency123<br><br>or<br><br>enter your username and password to access your account.</span>
+                        <span data-es><strong>Usuario de prueba:</strong> agency &nbsp;|&nbsp; <strong>Pass:</strong> agency123456<br><br>ó<br><br>ingresa tu usuario y contraseña para ir a tu cuenta.</span>
+                        <span data-en><strong>Test user:</strong> agency &nbsp;|&nbsp; <strong>Pass:</strong> agency123456<br><br>or<br><br>enter your username and password to access your account.</span>
                     </p>
                     <form method="post" action="">
                         {% csrf_token %}
@@ -271,7 +271,7 @@
                 var userInput = document.getElementById('id_username');
                 var passInput = document.getElementById('id_password');
                 if (userInput && !userInput.value) userInput.value = 'agency';
-                if (passInput && !passInput.value) passInput.value = 'agency123';
+                if (passInput && !passInput.value) passInput.value = 'agency123456';
             });
         }
     });

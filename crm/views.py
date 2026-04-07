@@ -50,6 +50,7 @@ def dashboard(request):
                     from django.core.management import call_command
                     call_command('setup_demo')
                     messages.info(request, "🛡️ Modo Demo Activado: Los datos se han reseteado para tu exploración. Nada de lo que crees aquí es persistente.")
+                    user.refresh_from_db()
                 login(request, user)
                 return redirect('dashboard')
         else:

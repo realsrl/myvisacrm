@@ -26,13 +26,13 @@ class Command(BaseCommand):
         # 2. Usuarios Demo
         u_agency, created = User.objects.get_or_create(username='agency')
         if created:
-            u_agency.set_password('agency123')
+            u_agency.set_password('agency123456')
             u_agency.first_name = "Agent"
             u_agency.last_name = "Demo"
             u_agency.is_staff = True
             u_agency.save()
         else:
-            u_agency.set_password('agency123')
+            u_agency.set_password('agency123456')
             u_agency.save()
 
         p_agency, _ = UserProfile.objects.get_or_create(user=u_agency, defaults={'agencia': agencia_demo, 'tipo': 'MIEMBRO', 'is_demo': True, 'es_admin_agencia': True})
