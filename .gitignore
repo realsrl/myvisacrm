@@ -18,8 +18,7 @@ ENV/
 *.log
 *.pot
 *.pyc
-db.sqlite3
-db.sqlite3-journal
+
 
 # Archivos de migración (opcional, normalmente NO se ignoran)
 # */migrations/*
