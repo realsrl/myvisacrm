@@ -3,7 +3,18 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+
+from django.contrib import sitemaps
+from django.contrib.sitemaps.views import sitemap
+from crm.sitemaps import StaticViewSitemap
+
+sitemaps_dict = {
+    "static": StaticViewSitemap,
+}
+
 urlpatterns = [
+    path("sitemap.xml", sitemap, {"sitemaps": sitemaps_dict}),
+
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
     path('formularios/', include('formularios.urls')),
