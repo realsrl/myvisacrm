@@ -19,6 +19,11 @@ ENV/
 *.pot
 *.pyc
 
+# Database
+db.sqlite3
+*.sqlite3
+
+
 
 # Archivos de migración (opcional, normalmente NO se ignoran)
 # */migrations/*
