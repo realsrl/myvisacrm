@@ -1,6 +1,7 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,32 +10,91 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; font-family: 'Inter', sans-serif; }
-        .navbar { background: linear-gradient(135deg, #0d6efd 0%, #0043a8 100%); }
-        .card { border-radius: 12px; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.06); }
-        .badge-danger { background-color: #dc3545; }
-        .badge-warning { background-color: #ffc107; color: #000; }
-        .badge-info { background-color: #0dcaf0; color: #000; }
-        .badge-success { background-color: #198754; }
-        
-        .kanban-col { min-width: 320px; max-width: 320px; background-color: #e9ecef; border-radius: 10px; padding: 15px; margin-right: 15px; max-height: 85vh; overflow-y: auto;}
-        .kanban-card { cursor: pointer; transition: transform 0.2s; }
-        .kanban-card:hover { transform: translateY(-3px); }
-        .kanban-board { display: flex; overflow-x: auto; padding-bottom: 20px; }
-        
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #0d6efd 0%, #0043a8 100%);
+        }
+
+        .card {
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, .1), 0 2px 4px -1px rgba(0, 0, 0, .06);
+        }
+
+        .badge-danger {
+            background-color: #dc3545;
+        }
+
+        .badge-warning {
+            background-color: #ffc107;
+            color: #000;
+        }
+
+        .badge-info {
+            background-color: #0dcaf0;
+            color: #000;
+        }
+
+        .badge-success {
+            background-color: #198754;
+        }
+
+        .kanban-col {
+            min-width: 320px;
+            max-width: 320px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            margin-right: 15px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .kanban-card {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .kanban-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .kanban-board {
+            display: flex;
+            overflow-x: auto;
+            padding-bottom: 20px;
+        }
+
         /* Semáforos */
-        .border-danger { border-left: 5px solid #dc3545 !important; }
-        .border-warning { border-left: 5px solid #ffc107 !important; }
-        .border-success { border-left: 5px solid #198754 !important; }
-        .border-info { border-left: 5px solid #0dcaf0 !important; }
+        .border-danger {
+            border-left: 5px solid #dc3545 !important;
+        }
+
+        .border-warning {
+            border-left: 5px solid #ffc107 !important;
+        }
+
+        .border-success {
+            border-left: 5px solid #198754 !important;
+        }
+
+        .border-info {
+            border-left: 5px solid #0dcaf0 !important;
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
+
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark mb-4">
         <div class="container-fluid">
             <a class="navbar-brand fw-bold" href="/">
-                <img src="{% static 'crm/myvisacrm.png' %}" alt="MyVisaCRM" height="120" class="me-2 rounded shadow-sm bg-white p-1">
+                <img src="{% static 'crm/myvisacrm.png' %}" alt="MyVisaCRM" height="120"
+                    class="me-2 rounded shadow-sm bg-white p-1">
             </a>
             {% if user.is_authenticated %}
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navs">
@@ -42,26 +102,33 @@
             </button>
             <div class="collapse navbar-collapse" id="navs">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    {% if user.is_staff %}
+                    {% if user.is_staff or user.profile.es_admin_agencia|default_if_none:False %}
                     <li class="nav-item">
-                        <a class="nav-link px-3" href="{% url 'dashboard' %}"><i class="fa-solid fa-chart-line me-1"></i> Dashboard</a>
+                        <a class="nav-link px-3" href="{% url 'dashboard' %}"><i
+                                class="fa-solid fa-chart-line me-1"></i> Dashboard</a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle px-3" href="#" id="funnelDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle px-3" href="#" id="funnelDropdown" role="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fa-solid fa-filter-list me-1"></i> Embudo
                         </a>
                         <ul class="dropdown-menu shadow border-0" aria-labelledby="funnelDropdown">
-                            <li><a class="dropdown-item" href="{% url 'funnel' %}?view=kanban"><i class="fa-solid fa-columns-line me-2 text-primary"></i> Vista Kanban</a></li>
-                            <li><a class="dropdown-item" href="{% url 'funnel' %}?view=rows"><i class="fa-solid fa-grip-lines me-2 text-success"></i> Filas por Tipo</a></li>
-                            <li><a class="dropdown-item" href="{% url 'funnel' %}?view=list"><i class="fa-solid fa-list me-2 text-info"></i> Vista de Lista</a></li>
+                            <li><a class="dropdown-item" href="{% url 'funnel' %}?view=kanban"><i
+                                        class="fa-solid fa-columns-line me-2 text-primary"></i> Vista Kanban</a></li>
+                            <li><a class="dropdown-item" href="{% url 'funnel' %}?view=rows"><i
+                                        class="fa-solid fa-grip-lines me-2 text-success"></i> Filas por Tipo</a></li>
+                            <li><a class="dropdown-item" href="{% url 'funnel' %}?view=list"><i
+                                        class="fa-solid fa-list me-2 text-info"></i> Vista de Lista</a></li>
                         </ul>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link px-3" href="{% url 'global_settings' %}"><i class="fa-solid fa-sliders me-1"></i> Ajustes</a>
+                        <a class="nav-link px-3" href="{% url 'global_settings' %}"><i
+                                class="fa-solid fa-sliders me-1"></i> Ajustes</a>
                     </li>
                     {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'client_portal' %}"><i class="fa-solid fa-user"></i> Portal de Cliente</a>
+                        <a class="nav-link" href="{% url 'client_portal' %}"><i class="fa-solid fa-user"></i> Portal de
+                            Cliente</a>
                     </li>
                     {% endif %}
                 </ul>
@@ -69,14 +136,15 @@
                     <span class="me-3">Bienvenido, {{ user.username }}</span>
                     <form method="post" action="{% url 'logout' %}" class="d-inline">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-right-from-bracket"></i> Salir</button>
+                        <button type="submit" class="btn btn-sm btn-outline-light"><i
+                                class="fa-solid fa-right-from-bracket"></i> Salir</button>
                     </form>
                 </div>
             </div>
             {% endif %}
         </div>
     </nav>
-    
+
     <div class="container-fluid px-4 pb-5">
         {% block content %}{% endblock %}
     </div>
@@ -84,4 +152,5 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     {% block extra_js %}{% endblock %}
 </body>
+
 </html>

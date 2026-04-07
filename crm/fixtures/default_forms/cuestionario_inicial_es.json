@@ -1,0 +1,25 @@
+{
+    "nombre": "Cuestionario Inicial (ES)",
+    "descripcion": "Información básica del solicitante.",
+    "activo": true,
+    "secciones": [
+        {
+            "nombre": "Datos Personales",
+            "repetible": false,
+            "preguntas": [
+                {
+                    "texto": "Nombre Completo",
+                    "tipo": "TEXTO",
+                    "requerida": true,
+                    "orden": 1
+                },
+                {
+                    "texto": "Fecha de Nacimiento",
+                    "tipo": "FECHA",
+                    "requerida": true,
+                    "orden": 2
+                }
+            ]
+        }
+    ]
+}

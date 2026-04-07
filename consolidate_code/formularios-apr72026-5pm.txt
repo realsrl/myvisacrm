@@ -1,0 +1,530 @@
+================================================================================
+CONSOLIDACIÓN DE CÓDIGO - APLICACIÓN: formularios
+================================================================================
+Proyecto: visapower
+Ruta física: /Users/edwinciprian/Documents/visapower/formularios
+Fecha consolidación: 2026-04-07 17:28:22
+================================================================================
+
+
+================================================================================
+📁 ARCHIVO: formularios/__init__.py
+📏 Tamaño: 0 bytes
+================================================================================
+
+
+
+================================================================================
+📁 ARCHIVO: formularios/admin.py
+📏 Tamaño: 1641 bytes
+================================================================================
+
+from django.contrib import admin
+from .models import Formulario, Seccion, FormularioSeccion, Pregunta, RespuestaFormulario, MensajeInterno
+
+class PreguntaInline(admin.TabularInline):
+    model = Pregunta
+    extra = 1
+    sortable_field_name = "orden"
+
+class FormularioSeccionInline(admin.TabularInline):
+    model = FormularioSeccion
+    extra = 1
+
+class PreguntaSueltaInline(admin.TabularInline):
+    model = Pregunta
+    extra = 1
+    exclude = ('seccion',)
+    verbose_name = "Pregunta Suelta (Sin sección)"
+    verbose_name_plural = "Preguntas Sueltas"
+
+@admin.register(Formulario)
+class FormularioAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'agencia', 'activo', 'creado_el')
+    list_filter = ('agencia', 'activo')
+    inlines = [FormularioSeccionInline, PreguntaSueltaInline]
+
+@admin.register(Seccion)
+class SeccionAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'agencia', 'repetible', 'activo')
+    list_filter = ('agencia',)
+    inlines = [PreguntaInline]
+
+@admin.register(Pregunta)
+class PreguntaAdmin(admin.ModelAdmin):
+    list_display = ('texto_pregunta', 'seccion', 'formulario', 'tipo_dato', 'orden')
+    list_filter = ('tipo_dato', 'formulario', 'seccion')
+
+@admin.register(RespuestaFormulario)
+class RespuestaFormularioAdmin(admin.ModelAdmin):
+    list_display = ('caso', 'formulario', 'estado', 'ultima_actualizacion')
+    list_filter = ('estado', 'formulario')
+    readonly_fields = ('ultima_actualizacion',)
+
+@admin.register(MensajeInterno)
+class MensajeInternoAdmin(admin.ModelAdmin):
+    list_display = ('emisor', 'receptor', 'caso', 'fecha_hora', 'leido')
+    list_filter = ('leido', 'fecha_hora')
+
+
+================================================================================
+📁 ARCHIVO: formularios/apps.py
+📏 Tamaño: 154 bytes
+================================================================================
+
+from django.apps import AppConfig
+
+
+class FormulariosConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "formularios"
+
+
+================================================================================
+📁 ARCHIVO: formularios/forms.py
+📏 Tamaño: 2221 bytes
+================================================================================
+
+from django import forms
+from .models import Formulario, Seccion, Pregunta, FormularioSeccion
+
+class FormularioForm(forms.ModelForm):
+    class Meta:
+        model = Formulario
+        fields = ['nombre', 'descripcion', 'activo']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'})
+        }
+
+class SeccionForm(forms.ModelForm):
+    class Meta:
+        model = Seccion
+        fields = ['nombre', 'descripcion', 'repetible', 'activo']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'repetible': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'})
+        }
+
+class PreguntaForm(forms.ModelForm):
+    class Meta:
+        model = Pregunta
+        fields = ['texto_pregunta', 'ayuda_visual', 'tipo_dato', 'orden', 'es_requerida', 'opciones']
+        widgets = {
+            'texto_pregunta': forms.TextInput(attrs={'class': 'form-control'}),
+            'ayuda_visual': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'tipo_dato': forms.Select(attrs={'class': 'form-select'}),
+            'orden': forms.NumberInput(attrs={'class': 'form-control'}),
+            'es_requerida': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'opciones': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Separar con comas'}),
+        }
+
+class FormularioSeccionForm(forms.ModelForm):
+    class Meta:
+        model = FormularioSeccion
+        fields = ['seccion', 'orden']
+        widgets = {
+            'seccion': forms.Select(attrs={'class': 'form-select'}),
+            'orden': forms.NumberInput(attrs={'class': 'form-control'})
+        }
+
+    def __init__(self, *args, agencia=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if agencia:
+            self.fields['seccion'].queryset = Seccion.objects.filter(agencia=agencia)
+
+
+================================================================================
+📁 ARCHIVO: formularios/models.py
+📏 Tamaño: 4970 bytes
+================================================================================
+
+from django.db import models
+from django.contrib.auth.models import User
+from crm.models import Caso, Agencia
+from django_countries.fields import CountryField
+from localflavor.us.models import USStateField
+
+class Formulario(models.Model):
+    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='formularios', null=True)
+    nombre = models.CharField(max_length=200, help_text="Ej: Cuestionario Inicial I-130")
+    descripcion = models.TextField(blank=True)
+    activo = models.BooleanField(default=True)
+    creado_el = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.nombre} ({self.agencia.nombre if self.agencia else 'Global'})"
+
+    class Meta:
+        verbose_name = "Molde de Formulario"
+        verbose_name_plural = "Moldes de Formularios"
+
+class Seccion(models.Model):
+    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='secciones_formularios', null=True)
+    nombre = models.CharField(max_length=200)
+    descripcion = models.TextField(blank=True)
+    repetible = models.BooleanField(default=False, help_text="¿Permitir agregar múltiples instancias (ej: empleos)?")
+    activo = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.nombre
+
+    class Meta:
+        verbose_name_plural = "Secciones"
+
+class FormularioSeccion(models.Model):
+    formulario = models.ForeignKey(Formulario, on_delete=models.CASCADE)
+    seccion = models.ForeignKey(Seccion, on_delete=models.CASCADE)
+    orden = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['orden']
+        unique_together = ('formulario', 'seccion')
+        verbose_name_plural = "Secciones"
+
+class Pregunta(models.Model):
+    TIPO_DATO_CHOICES = [
+        ('TEXTO', 'Texto Corto'),
+        ('TEXTAREA', 'Texto Largo'),
+        ('FECHA', 'Fecha'),
+        ('EMAIL', 'Email'),
+        ('NUMERO', 'Número'),
+        ('SELECT', 'Selección Múltiple'),
+        ('PAIS', 'País'),
+        ('ESTADO_US', 'Estado USA'),
+        ('DIRECCION_US', 'Dirección USA (Completa)'),
+        ('ARCHIVO', 'Archivo / Imagen'),
+    ]
+
+    formulario = models.ForeignKey(Formulario, on_delete=models.CASCADE, related_name='preguntas_sueltas', blank=True, null=True)
+    seccion = models.ForeignKey(Seccion, on_delete=models.CASCADE, related_name='preguntas', null=True, blank=True)
+    texto_pregunta = models.CharField(max_length=500)
+    ayuda_visual = models.TextField(blank=True, help_text="Pequeña explicación para el usuario")
+    tipo_dato = models.CharField(max_length=20, choices=TIPO_DATO_CHOICES, default='TEXTO')
+    orden = models.PositiveIntegerField(default=0)
+    es_requerida = models.BooleanField(default=True)
+    opciones = models.TextField(blank=True, help_text="Para selección múltiple, separar por comas")
+
+    def save(self, *args, **kwargs):
+        # Ya no heredamos del formulario directamente porque la sección es M2M
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.seccion.nombre if self.seccion else 'Pregunta Suelta'} - {self.texto_pregunta}"
+
+    class Meta:
+        ordering = ['orden']
+        verbose_name = "Pregunta"
+        verbose_name_plural = "Preguntas"
+
+class RespuestaFormulario(models.Model):
+    ESTADO_CHOICES = [
+        ('BORRADOR', 'Borrador'),
+        ('ENVIADO', 'Enviado'),
+        ('BLOQUEADO', 'Bloqueado'),
+    ]
+
+    caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name='respuestas_formularios')
+    formulario = models.ForeignKey(Formulario, on_delete=models.PROTECT)
+    datos = models.JSONField(default=dict, help_text="Almacena todas las respuestas del usuario")
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='BORRADOR')
+    ultima_actualizacion = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Respuestas: {self.formulario.nombre} - {self.caso.titulo}"
+
+    @property
+    def solo_lectura(self):
+        return self.estado in ['ENVIADO', 'BLOQUEADO']
+
+    class Meta:
+        verbose_name = "Respuesta de Formulario"
+        verbose_name_plural = "Respuestas de Formularios"
+
+class MensajeInterno(models.Model):
+    caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name='mensajes_internos')
+    emisor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mensajes_enviados_internos')
+    receptor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mensajes_recibidos_internos')
+    cuerpo = models.TextField()
+    adjunto = models.FileField(upload_to='mensajeria/%Y/%m/', null=True, blank=True)
+    fecha_hora = models.DateTimeField(auto_now_add=True)
+    leido = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Mensaje de {self.emisor} a {self.receptor} - {self.fecha_hora:%d/%m/%Y}"
+
+    class Meta:
+        verbose_name = "Mensaje Interno"
+        verbose_name_plural = "Mensajes Internos"
+        ordering = ['-fecha_hora']
+
+
+================================================================================
+📁 ARCHIVO: formularios/tests.py
+📏 Tamaño: 60 bytes
+================================================================================
+
+from django.test import TestCase
+
+# Create your tests here.
+
+
+================================================================================
+📁 ARCHIVO: formularios/urls.py
+📏 Tamaño: 230 bytes
+================================================================================
+
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('detalle/<int:respuesta_id>/', views.formulario_detalle, name='formulario_detalle'),
+    path('chat/<int:caso_id>/', views.chat_caso, name='chat_caso'),
+]
+
+
+================================================================================
+📁 ARCHIVO: formularios/views.py
+📏 Tamaño: 4506 bytes
+================================================================================
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from .models import RespuestaFormulario, Formulario, MensajeInterno
+from crm.models import Caso
+from django.http import JsonResponse
+
+from django.core.files.storage import FileSystemStorage
+import os
+
+@login_required
+def formulario_detalle(request, respuesta_id):
+    respuesta_obj = get_object_or_404(RespuestaFormulario, id=respuesta_id)
+    formulario = respuesta_obj.formulario
+    
+    profile = getattr(request.user, 'profile', None)
+    is_owner = request.user == respuesta_obj.caso.beneficiario_principal
+    is_staff_agency = profile and profile.tipo == 'MIEMBRO' and profile.agencia == respuesta_obj.caso.agencia
+    
+    if not (is_owner or is_staff_agency):
+        messages.error(request, "No tienes permiso para ver este formulario.")
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        if respuesta_obj.solo_lectura and not request.user.is_staff:
+            messages.error(request, "Este formulario está enviado y no puede ser editado.")
+            return redirect('formulario_detalle', respuesta_id=respuesta_id)
+        
+        datos_actualizados = {}
+        fs = FileSystemStorage()
+        
+        # Procesar archivos
+        for key, file in request.FILES.items():
+            filename = fs.save(f'formularios/respuestas/{key}_{file.name}', file)
+            datos_actualizados[key] = fs.url(filename)
+
+        # Procesar campos de texto y otros
+        for key, value in request.POST.items():
+            if key not in ['csrfmiddlewaretoken', 'action']:
+                datos_actualizados[key] = value
+
+        # Guardar progreso
+        respuesta_obj.datos.update(datos_actualizados)
+        
+        if request.POST.get('action') == 'send':
+            respuesta_obj.estado = 'ENVIADO'
+            messages.success(request, "Formulario enviado correctamente.")
+        else:
+            messages.success(request, "Progreso guardado.")
+        
+        respuesta_obj.save()
+        return redirect('formulario_detalle', respuesta_id=respuesta_id)
+
+    # Obtener secciones a través del modelo intermedio (para el orden personalizado)
+    fs_list = formulario.formularioseccion_set.all().order_by('orden').select_related('seccion')
+    secciones = [fs.seccion for fs in fs_list]
+    
+    # Preguntas sueltas (sin sección) vinculadas a este formulario específico
+    preguntas_sueltas = formulario.preguntas_sueltas.filter(seccion__isnull=True).order_by('orden')
+    
+    context = {
+        'respuesta': respuesta_obj,
+        'formulario': formulario,
+        'secciones': secciones,
+        'preguntas_sueltas': preguntas_sueltas,
+        'readonly': respuesta_obj.solo_lectura and not request.user.is_staff
+    }
+    return render(request, 'formularios/formulario_detalle.html', context)
+
+@login_required
+def chat_caso(request, caso_id):
+    caso = get_object_or_404(Caso, id=caso_id)
+    
+    profile = getattr(request.user, 'profile', None)
+    is_owner = request.user == caso.beneficiario_principal
+    is_staff_agency = profile and profile.tipo == 'MIEMBRO' and profile.agencia == caso.agencia
+    
+    if not (is_owner or is_staff_agency):
+        messages.error(request, "No tienes permiso para acceder a este chat.")
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        cuerpo = request.POST.get('mensaje')
+        adjunto = request.FILES.get('adjunto')
+        
+        # Identify receptor
+        if request.user == caso.beneficiario_principal:
+            receptor = caso.preparador
+        else:
+            receptor = caso.beneficiario_principal
+            
+        if receptor:
+            MensajeInterno.objects.create(
+                caso=caso,
+                emisor=request.user,
+                receptor=receptor,
+                cuerpo=cuerpo,
+                adjunto=adjunto
+            )
+            # Logic for email notification could go here
+            messages.success(request, "Mensaje enviado.")
+        else:
+            messages.error(request, "No hay un receptor asignado para este mensaje.")
+            
+        return redirect('chat_caso', caso_id=caso_id)
+        
+    mensajes = caso.mensajes_internos.all().order_by('fecha_hora')
+    # Mark as read
+    mensajes.filter(receptor=request.user, leido=False).update(leido=True)
+    
+    return render(request, 'formularios/chat.html', {'caso': caso, 'mensajes': mensajes})
+
+
+================================================================================
+📁 ARCHIVO: formularios/templatetags/__init__.py
+📏 Tamaño: 0 bytes
+================================================================================
+
+
+
+================================================================================
+📁 ARCHIVO: formularios/templatetags/formulario_extras.py
+📏 Tamaño: 1065 bytes
+================================================================================
+
+from django import template
+
+register = template.Library()
+
+@register.filter
+def get_item_dynamic(dictionary, key, index=0):
+    if not isinstance(dictionary, dict):
+        return ""
+    full_key = f"q_{key}_{index}"
+    return dictionary.get(full_key, "")
+
+@register.filter
+def add_index(value, index):
+    return f"{value}_{index}"
+
+@register.filter
+def add_str(value, arg):
+    return str(value) + str(arg)
+
+@register.filter
+def has_data_for_index(dictionary, question_id_and_index):
+    # This filter check if any key in the dictionary starts with q_{question_id}_{index}
+    if not isinstance(dictionary, dict):
+        return False
+    prefix = f"q_{question_id_and_index}"
+    for key in dictionary.keys():
+        if key.startswith(prefix):
+            return True
+    return False
+
+@register.filter
+def get_value(dictionary, key):
+    if not isinstance(dictionary, dict):
+        return ""
+    return dictionary.get(key, "")
+
+@register.filter
+def split(value, arg):
+    return value.split(arg)
+
+@register.filter
+def trim(value):
+    return value.strip()
+
+
+
+================================================================================
+📁 ARCHIVO: formularios/management/__init__.py
+📏 Tamaño: 0 bytes
+================================================================================
+
+
+
+================================================================================
+📁 ARCHIVO: formularios/management/commands/__init__.py
+📏 Tamaño: 0 bytes
+================================================================================
+
+
+
+================================================================================
+📁 ARCHIVO: formularios/management/commands/seed_i130.py
+📏 Tamaño: 2357 bytes
+================================================================================
+
+from django.core.management.base import BaseCommand
+from formularios.models import Formulario, Seccion, Pregunta, FormularioSeccion
+
+class Command(BaseCommand):
+    help = 'Seeds the database with I-130 Initial Questionnaire'
+
+    def handle(self, *args, **kwargs):
+        f, created = Formulario.objects.get_or_create(
+            nombre='Cuestionario Inicial I-130',
+            defaults={'descripcion': 'Recolecta información para el Peticionario y Beneficiario.'}
+        )
+
+        # 1. Secciones
+        s1, _ = Seccion.objects.get_or_create(nombre='Datos del Peticionario')
+        FormularioSeccion.objects.get_or_create(formulario=f, seccion=s1, defaults={'orden': 1})
+        
+        Pregunta.objects.get_or_create(formulario=f, seccion=s1, texto_pregunta='Estatus Legal', tipo_dato='SELECT', opciones='Ciudadano, Residente', orden=3)
+
+        s2, _ = Seccion.objects.get_or_create(nombre='Datos del Beneficiario (Biometría)')
+        FormularioSeccion.objects.get_or_create(formulario=f, seccion=s2, defaults={'orden': 2})
+        
+        Pregunta.objects.get_or_create(formulario=f, seccion=s2, texto_pregunta='Número de Pasaporte', tipo_dato='TEXT', orden=8)
+        Pregunta.objects.get_or_create(formulario=f, seccion=s2, texto_pregunta='Foto del Pasaporte', tipo_dato='ARCHIVO', orden=9)
+
+        s3, _ = Seccion.objects.get_or_create(nombre='Historial de Empleo', repetible=True)
+        FormularioSeccion.objects.get_or_create(formulario=f, seccion=s3, defaults={'orden': 3})
+        
+        Pregunta.objects.get_or_create(formulario=f, seccion=s3, texto_pregunta='Nombre del Empleador', tipo_dato='TEXT', orden=1)
+        Pregunta.objects.get_or_create(formulario=f, seccion=s3, texto_pregunta='Cargo/Ocupación', tipo_dato='TEXT', orden=2)
+
+        s4, _ = Seccion.objects.get_or_create(nombre='Matrimonios Anteriores', repetible=True)
+        FormularioSeccion.objects.get_or_create(formulario=f, seccion=s4, defaults={'orden': 4})
+        
+        Pregunta.objects.get_or_create(formulario=f, seccion=s4, texto_pregunta='Nombre del Cónyuge Anterior', tipo_dato='TEXT', orden=1)
+
+        # Pregunta Suelta
+        Pregunta.objects.get_or_create(formulario=f, seccion=None, texto_pregunta='Notas Finales', tipo_dato='TEXTAREA', orden=99)
+
+        self.stdout.write(self.style.SUCCESS('I-130 Template seeded with M2M sections!'))
+
+
+================================================================================
+📊 RESUMEN DE APLICACIÓN
+================================================================================
+Total archivos: 13
+Tamaño total: 17204 bytes (16.80 KB)
+================================================================================

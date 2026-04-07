@@ -1,0 +1,50 @@
+{
+    "nombre": "Initial Questionnaire I-130 (EN)",
+    "descripcion": "Collects basic information for the Petitioner and Beneficiary.",
+    "activo": true,
+    "secciones": [
+        {
+            "nombre": "Petitioner Information",
+            "repetible": false,
+            "preguntas": [
+                {
+                    "texto": "Full Legal Name",
+                    "tipo": "TEXTO",
+                    "requerida": true,
+                    "orden": 1
+                },
+                {
+                    "texto": "Date of Birth",
+                    "tipo": "FECHA",
+                    "requerida": true,
+                    "orden": 2
+                },
+                {
+                    "texto": "Current Legal Status",
+                    "tipo": "SELECT",
+                    "requerida": true,
+                    "orden": 3,
+                    "opciones": "Citizen, Permanent Resident, Non-Immigrant, Undocumented"
+                }
+            ]
+        },
+        {
+            "nombre": "Employment History",
+            "repetible": true,
+            "preguntas": [
+                {
+                    "texto": "Employer Name",
+                    "tipo": "TEXTO",
+                    "requerida": true,
+                    "orden": 1
+                },
+                {
+                    "texto": "Job Title",
+                    "tipo": "TEXTO",
+                    "requerida": true,
+                    "orden": 2
+                }
+            ]
+        }
+    ]
+}

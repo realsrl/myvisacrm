@@ -1,0 +1,2530 @@
+================================================================================
+CONSOLIDACIÓN DE CÓDIGO - APLICACIÓN: crm
+================================================================================
+Proyecto: visapower
+Ruta física: /Users/edwinciprian/Documents/visapower/crm
+Fecha consolidación: 2026-04-07 17:28:22
+================================================================================
+
+
+================================================================================
+📁 ARCHIVO: crm/__init__.py
+📏 Tamaño: 0 bytes
+================================================================================
+
+
+
+================================================================================
+📁 ARCHIVO: crm/admin.py
+📏 Tamaño: 4677 bytes
+================================================================================
+
+from django.contrib import admin
+from .models import (
+    Derivado, Credencial, Agencia, UserProfile, StripeConfig, CaseStatus, Caso, Actividad, Documento,
+    ActualizacionCliente, ConfiguracionDashboard, ConfiguracionMensajes,
+    Checklist, ChecklistItem, CaseChecklist, CaseChecklistItem
+)
+
+@admin.register(Agencia)
+class AgenciaAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'plan', 'casos_activos_count', 'usuarios_count', 'activo')
+    prepopulated_fields = {'slug': ('nombre',)}
+    fieldsets = (
+        (None, {
+            'fields': ('nombre', 'slug', 'logo', 'activo')
+        }),
+        ('Ubicación y Contacto', {
+            'fields': ('direccion', 'telefono')
+        }),
+        ('Suscripción y Límites', {
+            'fields': ('plan', 'stripe_customer_id', 'stripe_subscription_id')
+        }),
+        ('Límites Personalizados', {
+            'fields': ('limite_casos_custom', 'limite_usuarios_custom'),
+            'description': 'Solo llenar si se desea sobrescribir los valores por defecto del plan.'
+        }),
+    )
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'agencia', 'tipo', 'es_admin_agencia')
+    list_filter = ('agencia', 'tipo', 'es_admin_agencia')
+
+@admin.register(CaseStatus)
+class CaseStatusAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'orden', 'color')
+    list_editable = ('orden', 'color')
+
+class DerivadoInline(admin.TabularInline):
+    model = Derivado
+    extra = 1
+
+class CredencialInline(admin.TabularInline):
+    model = Credencial
+    extra = 1
+
+@admin.register(Caso)
+class CasoAdmin(admin.ModelAdmin):
+    list_display = ('id', 'titulo', 'beneficiario_principal', 'preparador', 'status_actual', 'esta_archivado', 'fecha_apertura')
+    list_editable = ('status_actual', 'esta_archivado')
+    list_filter = ('esta_archivado', 'status_actual', 'chat_habilitado', 'tipo', 'sub_tipo', 'preparador')
+    search_fields = ('titulo', 'beneficiario_principal__username', 'beneficiario_principal__first_name', 'beneficiario_principal__last_name')
+    inlines = [DerivadoInline, CredencialInline]
+    date_hierarchy = 'fecha_apertura'
+
+@admin.register(Actividad)
+class ActividadAdmin(admin.ModelAdmin):
+    list_display = ('titulo', 'caso', 'status', 'fecha_vencimiento', 'prioridad_alta')
+    list_filter = ('status', 'prioridad_alta', 'fecha_vencimiento')
+    search_fields = ('titulo', 'detalle', 'caso__titulo')
+
+@admin.register(Documento)
+class DocumentoAdmin(admin.ModelAdmin):
+    list_display = ('nombre_documento', 'caso', 'categoria', 'user_can_view', 'fecha_subida')
+    list_filter = ('categoria', 'user_can_view', 'fecha_subida')
+    search_fields = ('nombre_documento', 'caso__titulo')
+
+admin.site.register(ActualizacionCliente)
+
+
+@admin.register(ConfiguracionDashboard)
+class ConfiguracionDashboardAdmin(admin.ModelAdmin):
+    list_display = ('dias_proximos_vencer',)
+
+    def has_add_permission(self, request):
+        return not ConfiguracionDashboard.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ConfiguracionMensajes)
+class ConfiguracionMensajesAdmin(admin.ModelAdmin):
+    """Singleton: no se puede agregar ni eliminar, solo editar el registro único."""
+    list_display = ('limite', 'periodo')
+
+    def has_add_permission(self, request):
+        # Evitar crear más de uno
+        return not ConfiguracionMensajes.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        if 'delete_selected' in actions:
+            del actions['delete_selected']
+        return actions
+@admin.register(StripeConfig)
+class StripeConfigAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'is_live')
+    
+    def has_add_permission(self, request):
+        return not StripeConfig.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+class ChecklistItemInline(admin.TabularInline):
+    model = ChecklistItem
+    extra = 3
+
+@admin.register(Checklist)
+class ChecklistAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'agencia', 'creado_el')
+    list_filter = ('agencia',)
+    search_fields = ('nombre', 'agencia__nombre')
+    inlines = [ChecklistItemInline]
+
+class CaseChecklistItemInline(admin.TabularInline):
+    model = CaseChecklistItem
+    extra = 0
+
+@admin.register(CaseChecklist)
+class CaseChecklistAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'caso', 'fecha_asignado')
+    list_filter = ('caso__agencia',)
+    search_fields = ('nombre', 'caso__titulo')
+    inlines = [CaseChecklistItemInline]
+
+
+================================================================================
+📁 ARCHIVO: crm/apps.py
+📏 Tamaño: 186 bytes
+================================================================================
+
+from django.apps import AppConfig
+
+class CrmConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'crm'
+
+    def ready(self):
+        import crm.signals
+
+
+================================================================================
+📁 ARCHIVO: crm/constants.py
+📏 Tamaño: 833 bytes
+================================================================================
+
+PLAN_DETAILS = {
+    'STARTER': {
+        'precio': 39, 
+        'casos': 40, 
+        'usuarios': 1, 
+        'usuario_extra': 12, 
+        'color': '#6c757d'
+    },
+    'GROWTH': {
+        'precio': 89, 
+        'casos': 150, 
+        'usuarios': 3, 
+        'usuario_extra': 10, 
+        'color': '#0d6efd',
+        'is_popular': True
+    },
+    'PRO': {
+        'precio': 179, 
+        'casos': 400, 
+        'usuarios': 5, 
+        'usuario_extra': 8, 
+        'color': '#6610f2'
+    },
+    'SCALE': {
+        'precio': 299, 
+        'casos': 800, 
+        'usuarios': 10, 
+        'usuario_extra': 6, 
+        'color': '#198754'
+    },
+    'ENTERPRISE': {
+        'precio': 400, 
+        'casos': 9999, 
+        'usuarios': 9999, 
+        'usuario_extra': 0, 
+        'color': '#212529',
+        'note': 'Let\'s talk'
+    },
+}
+
+
+================================================================================
+📁 ARCHIVO: crm/forms.py
+📏 Tamaño: 8874 bytes
+================================================================================
+
+from django import forms
+from .models import (
+    Documento, MensajeCliente, ActualizacionCliente, Caso, CaseStatus, Credencial,
+    Agencia, Checklist, ChecklistItem, ConfiguracionMensajes, TipoCaso, SubTipoCaso
+)
+from django.contrib.auth.models import User
+
+class DocumentoClienteForm(forms.ModelForm):
+    class Meta:
+        model = Documento
+        fields = ['nombre_documento', 'categoria', 'detalle', 'archivo']
+        labels = {
+            'nombre_documento': 'Título del Documento',
+            'categoria': 'Categoría',
+            'detalle': 'Mensaje o Detalle (Opcional)',
+            'archivo': 'Seleccionar Archivo',
+        }
+        widgets = {
+            'nombre_documento': forms.TextInput(attrs={'placeholder': 'Ej: Acta de nacimiento, Pasaporte...'}),
+            'detalle': forms.Textarea(attrs={
+                'rows': 3,
+                'placeholder': 'Explica brevemente de qué trata este documento...'
+            }),
+            'categoria': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+    def __init__(self, *args, agency=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .models import CategoriaDocumento
+        if agency:
+            self.fields['categoria'].queryset = CategoriaDocumento.objects.filter(agencia=agency)
+        else:
+            self.fields['categoria'].queryset = CategoriaDocumento.objects.all()
+
+class MensajeClienteForm(forms.ModelForm):
+    class Meta:
+        model = MensajeCliente
+        fields = ['contenido']
+        labels = {'contenido': ''}
+        widgets = {
+            'contenido': forms.Textarea(attrs={
+                'rows': 3,
+                'placeholder': 'Escribe tu mensaje al preparador...',
+                'class': 'form-control',
+            }),
+        }
+
+class ActualizacionForm(forms.ModelForm):
+    class Meta:
+        model = ActualizacionCliente
+        fields = ['mensaje']
+        labels = {'mensaje': ''}
+        widgets = {
+            'mensaje': forms.Textarea(attrs={
+                'rows': 3,
+                'placeholder': 'Escribe la actualización que verá el cliente en su portal...',
+                'class': 'form-control',
+            }),
+        }
+
+
+class NuevoCasoForm(forms.Form):
+    """Form for creating a new case from the dashboard."""
+    titulo = forms.CharField(
+        max_length=200,
+        label='Nombre del Caso',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: Juan Pérez - Residencia Permanente',
+        })
+    )
+    tipo = forms.ModelChoiceField(
+        queryset=TipoCaso.objects.none(),
+        label='Tipo de Caso',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    sub_tipo = forms.ModelChoiceField(
+        queryset=SubTipoCaso.objects.none(),
+        label='Sub-Tipo',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    preparador = forms.ModelChoiceField(
+        queryset=User.objects.none(),
+        label='Asignar a Agente',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    status_inicial = forms.ModelChoiceField(
+        queryset=CaseStatus.objects.none(),
+        label='Estado Inicial',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+    # Client user creation
+    nombre_cliente = forms.CharField(
+        max_length=100,
+        label='Nombre del Cliente',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nombre completo del beneficiario',
+        })
+    )
+    email_cliente = forms.EmailField(
+        label='Email del Cliente',
+        required=False,
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'correo@ejemplo.com (opcional)',
+        })
+    )
+    username_cliente = forms.CharField(
+        max_length=150,
+        label='Usuario de Acceso (Cliente)',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: jperez01',
+        })
+    )
+    password_cliente = forms.CharField(
+        max_length=128,
+        label='Contraseña de Acceso (Cliente)',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Contraseña para el portal del cliente',
+        })
+    )
+
+    def __init__(self, *args, agencia=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if agencia:
+            from .models import UserProfile
+            # Team members of this agency
+            team_user_ids = UserProfile.objects.filter(
+                agencia=agencia, tipo='MIEMBRO'
+            ).values_list('user_id', flat=True)
+            self.fields['preparador'].queryset = User.objects.filter(
+                id__in=team_user_ids
+            )
+            # Case statuses for this agency
+            self.fields['status_inicial'].queryset = CaseStatus.objects.filter(
+                agencia=agencia
+            ).order_by('orden')
+            # Dynamic Types and Subtypes
+            self.fields['tipo'].queryset = TipoCaso.objects.filter(agencia=agencia)
+            self.fields['sub_tipo'].queryset = SubTipoCaso.objects.filter(tipo_caso__agencia=agencia)
+
+
+class ChecklistForm(forms.ModelForm):
+    class Meta:
+        model = Checklist
+        fields = ['nombre']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de la Plantilla (ej: Requisitos Residencia)'})
+        }
+
+class ChecklistItemForm(forms.ModelForm):
+    class Meta:
+        model = ChecklistItem
+        fields = ['texto', 'orden']
+        widgets = {
+            'texto': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Descripción del ítem'}),
+            'orden': forms.NumberInput(attrs={'class': 'form-control'})
+        }
+
+class CaseStatusForm(forms.ModelForm):
+    class Meta:
+        model = CaseStatus
+        fields = ['nombre', 'orden', 'color']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'orden': forms.NumberInput(attrs={'class': 'form-control'}),
+            'color': forms.TextInput(attrs={'class': 'form-control', 'type': 'color'})
+        }
+
+class ConfigMensajesForm(forms.ModelForm):
+    class Meta:
+        model = ConfiguracionMensajes
+        fields = ['limite', 'periodo']
+        widgets = {
+            'limite': forms.NumberInput(attrs={'class': 'form-control'}),
+            'periodo': forms.Select(attrs={'class': 'form-select'})
+        }
+
+class PreparadorForm(forms.Form):
+    username = forms.CharField(max_length=150, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    first_name = forms.CharField(max_length=30, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    last_name = forms.CharField(max_length=30, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    email = forms.EmailField(widget=forms.EmailInput(attrs={'class': 'form-control'}))
+    password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control'}), required=False, help_text="Dejar en blanco para mantener actual")
+    es_admin = forms.BooleanField(required=False, widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
+
+class TipoCasoForm(forms.ModelForm):
+    class Meta:
+        model = TipoCaso
+        fields = ['nombre']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'})
+        }
+
+class SubTipoCasoForm(forms.ModelForm):
+    class Meta:
+        model = SubTipoCaso
+        fields = ['tipo_caso', 'nombre']
+        widgets = {
+            'tipo_caso': forms.Select(attrs={'class': 'form-select'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control'})
+        }
+    
+    def __init__(self, *args, agencia=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if agencia:
+            self.fields['tipo_caso'].queryset = TipoCaso.objects.filter(agencia=agencia)
+
+class CategoriaDocumentoForm(forms.ModelForm):
+    class Meta:
+        from .models import CategoriaDocumento
+        model = CategoriaDocumento
+        fields = ['nombre']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Acta de Nacimiento, Pasaporte...'})
+        }
+
+class DerivadoForm(forms.ModelForm):
+    class Meta:
+        from .models import Derivado
+        model = Derivado
+        fields = ['nombre', 'apellido', 'telefono', 'email']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre'}),
+            'apellido': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Apellido'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Teléfono'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
+        }
+
+
+================================================================================
+📁 ARCHIVO: crm/models.py
+📏 Tamaño: 17667 bytes
+================================================================================
+
+from django.db import models
+from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
+
+class Agencia(models.Model):
+    """Representa a una agencia o empresa que gestiona casos de visa."""
+    PLAN_CHOICES = [
+        ('STARTER', 'Starter'),
+        ('GROWTH', 'Growth'),
+        ('PRO', 'Pro'),
+        ('SCALE', 'Scale'),
+        ('ENTERPRISE', 'Enterprise'),
+    ]
+
+    nombre = models.CharField(max_length=100)
+    slug = models.SlugField(unique=True, help_text="Identificador único en la URL (ej: mi-agencia)")
+    logo = models.ImageField(upload_to='agencias/logos/', blank=True, null=True)
+    direccion = models.CharField(max_length=255, blank=True)
+    telefono = models.CharField(max_length=20, blank=True)
+    activo = models.BooleanField(default=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    
+    # Planes y Suscripciones
+    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default='STARTER')
+    stripe_customer_id = models.CharField(max_length=100, blank=True, null=True)
+    stripe_subscription_id = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Límites personalizados (para Enterprise o ajustes manuales)
+    limite_casos_custom = models.PositiveIntegerField(null=True, blank=True, help_text="Sobrescribe el límite del plan si se especifica")
+    limite_usuarios_custom = models.PositiveIntegerField(null=True, blank=True, help_text="Sobrescribe el límite del plan si se especifica")
+
+    @property
+    def limites_actuales(self):
+        from .constants import PLAN_DETAILS
+        details = PLAN_DETAILS.get(self.plan, PLAN_DETAILS['STARTER'])
+        return {
+            'casos': self.limite_casos_custom if self.limite_casos_custom is not None else details['casos'],
+            'usuarios': self.limite_usuarios_custom if self.limite_usuarios_custom is not None else details['usuarios'],
+            'precio_base': details['precio'],
+            'usuario_extra': details['usuario_extra']
+        }
+
+    @property
+    def casos_activos_count(self):
+        # Según reglas: Casos = activos (no históricos). Solo casos ARCHIVADOS no cuentan.
+        # Casos cerrados siguen contando.
+        return self.casos.filter(esta_archivado=False).count()
+
+    @property
+    def usuarios_count(self):
+        # Según reglas: Usuarios que son CLIENTES no cuentan como usuarios del plan.
+        # Solo cuentan los Miembros del Equipo (Preparadores/Staff).
+        return self.usuarios.filter(tipo='MIEMBRO').count()
+    
+    @property
+    def uso_casos_porcentaje(self):
+        limite = self.limites_actuales['casos']
+        if limite == 0: return 0
+        return (self.casos_activos_count / limite) * 100
+
+    def __str__(self):
+        return self.nombre
+
+    class Meta:
+        verbose_name_plural = "Agencias"
+
+class UserProfile(models.Model):
+    """Extiende el usuario de Django para vincularlo a una agencia."""
+    TIPO_CHOICES = [
+        ('MIEMBRO', 'Miembro del Equipo'),
+        ('CLIENTE', 'Cliente'),
+    ]
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='usuarios')
+    tipo = models.CharField(max_length=15, choices=TIPO_CHOICES, default='MIEMBRO')
+    is_demo = models.BooleanField(default=False)
+    es_admin_agencia = models.BooleanField(default=False, help_text="Si es True, puede editar configuraciones de la agencia.")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.agencia.nombre}"
+
+class CaseStatus(models.Model):
+    """Define las etapas del embudo: 'I-130 Pendiente', 'Cita Consular', etc."""
+    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='estados_casos', null=True)
+    nombre = models.CharField(max_length=100)
+    # ... rest remains same but I'll update the whole class for clarity
+    orden = models.PositiveIntegerField(default=0, help_text="Define la posición en el embudo")
+    color = models.CharField(max_length=7, default="#0d6efd", help_text="Color en formato HEX para las etiquetas")
+
+    class Meta:
+        ordering = ['orden']
+        verbose_name = "Estado del Caso"
+        verbose_name_plural = "Estados de los Casos"
+
+    def __str__(self):
+        return f"{self.orden}. {self.nombre} ({self.agencia.nombre if self.agencia else 'Global'})"
+
+class TipoCaso(models.Model):
+    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='tipos_casos')
+    nombre = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.nombre} ({self.agencia.nombre})"
+
+class SubTipoCaso(models.Model):
+    tipo_caso = models.ForeignKey(TipoCaso, on_delete=models.CASCADE, related_name='subtipos')
+    nombre = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.nombre} - {self.tipo_caso.nombre}"
+
+class Caso(models.Model):
+    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='casos', null=True)
+    titulo = models.CharField(max_length=200, help_text="Ej: Juan Perez - Residencia")
+    tipo = models.ForeignKey(TipoCaso, on_delete=models.SET_NULL, null=True, blank=True)
+    sub_tipo = models.ForeignKey(SubTipoCaso, on_delete=models.SET_NULL, null=True, blank=True)
+    chat_habilitado = models.BooleanField(
+        default=True,
+        help_text="Permite al cliente enviar mensajes al preparador desde su portal"
+    )
+    
+    # Relaciones
+    beneficiario_principal = models.ForeignKey(User, on_delete=models.CASCADE, related_name='casos_cliente')
+    preparador = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='casos_gestionados')
+    status_actual = models.ForeignKey(CaseStatus, on_delete=models.PROTECT, related_name='casos')
+    
+    # Fechas automáticas
+    fecha_apertura = models.DateTimeField(auto_now_add=True)
+    ultima_modificacion = models.DateTimeField(auto_now=True)
+    
+    # Estado de Archivo
+    esta_archivado = models.BooleanField(
+        default=False, 
+        help_text="Los casos archivados no cuentan para el límite del plan, pero no se pueden editar ni reabrir."
+    )
+
+    def __str__(self):
+        return f"{self.titulo} - {self.status_actual.nombre}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        # Solo validar al CREAR un caso nuevo que NO esté marcado como archivado
+        if not self.pk and not self.esta_archivado and self.agencia:
+            limites = self.agencia.limites_actuales
+            if self.agencia.casos_activos_count >= limites['casos']:
+                raise ValidationError(
+                    f"⚠️ Límite de casos alcanzado ({limites['casos']}) para el plan {self.agencia.plan}. "
+                    "Archiva casos antiguos o cambia a un plan superior para continuar."
+                )
+        
+        # Si el caso está archivado, no permitir ciertos cambios si se intenta guardar de nuevo
+        if self.pk:
+            original = Caso.objects.get(pk=self.pk)
+            if original.esta_archivado and not self.esta_archivado:
+                raise ValidationError("Un caso archivado no puede ser reabierto.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+class Derivado(models.Model):
+    """Familiares incluidos en el mismo caso (hijos, cónyuge)"""
+    caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name='derivados')
+    nombre = models.CharField(max_length=100)
+    apellido = models.CharField(max_length=100)
+    telefono = models.CharField(max_length=20, blank=True)
+    email = models.EmailField(blank=True)
+
+class Actividad(models.Model):
+    STATUS_TAREA = [('PENDIENTE', 'Pendiente'), ('EN_PROCESO', 'En Proceso'), ('COMPLETADA', 'Completada')]
+    
+    caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name='actividades')
+    titulo = models.CharField(max_length=255)
+    detalle = models.TextField(blank=True)
+    
+    # GESTIÓN DE TIEMPOS 
+    fecha_programada = models.DateField(null=True, blank=True, help_text="Cuándo planeas hacerlo")
+    fecha_vencimiento = models.DateField(null=True, blank=True, help_text="Fecha límite legal")
+    
+    status = models.CharField(max_length=15, choices=STATUS_TAREA, default='PENDIENTE')
+    prioridad_alta = models.BooleanField(default=False)
+    fecha_completada = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['fecha_vencimiento', 'fecha_programada']
+
+    @property
+    def semaforo_alerta(self):
+        hoy = timezone.now().date()
+        if self.status == 'COMPLETADA': return 'success'
+        if self.fecha_vencimiento and self.fecha_vencimiento < hoy: return 'danger'
+        if self.fecha_programada and self.fecha_programada == hoy: return 'warning'
+        return 'info'
+
+from cryptography.fernet import Fernet
+from django.conf import settings
+
+class Credencial(models.Model):
+    caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name='credenciales')
+    sitio_web = models.CharField(max_length=100, help_text="Ej: Portal CEAC / USCIS")
+    usuario = models.CharField(max_length=150)
+    password = models.CharField(max_length=500, help_text="Almacenado de forma cifrada")
+
+    class Meta:
+        verbose_name_plural = "Credenciales"
+
+    def save(self, *args, **kwargs):
+        # Si el password no parece estar cifrado (Fernet tokens empiezan por gAAAA), lo ciframos
+        if self.password and not self.password.startswith('gAAAA'):
+            self.set_password(self.password)
+        super().save(*args, **kwargs)
+
+    def set_password(self, raw_password):
+        f = Fernet(settings.FERNET_KEY)
+        self.password = f.encrypt(raw_password.encode()).decode()
+
+    def get_password(self):
+        if not self.password: return ""
+        try:
+            # Si no es un token Fernet, retornamos el valor tal cual (o vacío)
+            if not self.password.startswith('gAAAA'): return self.password
+            f = Fernet(settings.FERNET_KEY)
+            return f.decrypt(self.password.encode()).decode()
+        except Exception as e:
+            return f"Error de cifrado: {str(e)}"
+
+class CategoriaDocumento(models.Model):
+    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='categorias_documentos')
+    nombre = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.nombre} ({self.agencia.nombre})"
+
+    class Meta:
+        verbose_name = "Categoría de Documento"
+        verbose_name_plural = "Categorías de Documentos"
+
+class Documento(models.Model):
+    caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name='documentos')
+    archivo = models.FileField(upload_to='expedientes/%Y/%m/')
+    categoria = models.ForeignKey(CategoriaDocumento, on_delete=models.SET_NULL, related_name='documentos', null=True, blank=True)
+    nombre_documento = models.CharField(max_length=255)
+    detalle = models.TextField(blank=True, null=True, help_text="Mensaje o detalle del documento")
+    # Si True, el cliente puede ver este documento en su portal
+    user_can_view = models.BooleanField(
+        default=True,
+        help_text="Si está activo, el cliente puede ver y descargar este documento desde su portal."
+    )
+    fecha_subida = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.nombre_documento} ({self.get_categoria_display()})"
+
+class ActualizacionCliente(models.Model):
+    """Lo que el usuario ve en su portal para no llamar por teléfono"""
+    caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name='actualizaciones')
+    mensaje = models.TextField()
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-fecha']
+
+
+class MensajeCliente(models.Model):
+    """Mensajes enviados por el cliente al preparador desde el portal"""
+    caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name='mensajes')
+    remitente = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mensajes_enviados')
+    contenido = models.TextField(help_text="Escribe tu mensaje al preparador")
+    fecha = models.DateTimeField(auto_now_add=True)
+    leido = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['fecha']
+
+    def __str__(self):
+        return f"Mensaje de {self.remitente.username} el {self.fecha:%d/%m/%Y %H:%M}"
+
+    @classmethod
+    def mensajes_periodo_count(cls, usuario, caso):
+        """Cuenta mensajes enviados por el usuario en el período configurado."""
+        config = ConfiguracionMensajes.get_config(caso.agencia)
+        now = timezone.now()
+        if config.periodo == 'DIARIO':
+            desde = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif config.periodo == 'SEMANAL':
+            desde = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+        else:  # MENSUAL
+            desde = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return cls.objects.filter(remitente=usuario, caso=caso, fecha__gte=desde).count()
+
+
+class ConfiguracionMensajes(models.Model):
+    """Controla el límite de mensajes que el cliente puede enviar por período, por Agencia."""
+    agencia = models.OneToOneField(Agencia, on_delete=models.CASCADE, related_name='config_mensajes', null=True)
+    # ...
+    PERIODO_CHOICES = [
+        ('DIARIO', 'Por Día'),
+        ('SEMANAL', 'Por Semana'),
+        ('MENSUAL', 'Por Mes'),
+    ]
+    limite = models.PositiveIntegerField(
+        default=5,
+        help_text="Número máximo de mensajes permitidos por período"
+    )
+    periodo = models.CharField(
+        max_length=10,
+        choices=PERIODO_CHOICES,
+        default='DIARIO',
+        help_text="Ventana de tiempo en que aplica el límite"
+    )
+
+    class Meta:
+        verbose_name = "Configuración de Mensajes"
+        verbose_name_plural = "Configuración de Mensajes"
+
+    def __str__(self):
+        return f"Límite {self.agencia.nombre if self.agencia else 'Global'}: {self.limite} mens/periodo"
+
+    @classmethod
+    def get_config(cls, agencia):
+        obj, _ = cls.objects.get_or_create(agencia=agencia, defaults={'limite': 5, 'periodo': 'DIARIO'})
+        return obj
+
+class ConfiguracionDashboard(models.Model):
+    agencia = models.OneToOneField(Agencia, on_delete=models.CASCADE, related_name='config_dashboard', null=True)
+    dias_proximos_vencer = models.PositiveIntegerField(default=7, help_text="Días de antelación para mostrar tareas en 'Próximas a Vencer'")
+
+    def __str__(self):
+        return f"Config Dashboard - {self.agencia.nombre if self.agencia else 'Global'}"
+
+    class Meta:
+        verbose_name = "Configuración del Dashboard"
+        verbose_name_plural = "Configuración del Dashboard"
+
+    @classmethod
+    def get_config(cls, agencia):
+        obj, created = cls.objects.get_or_create(agencia=agencia)
+        return obj
+
+
+class StripeConfig(models.Model):
+    """Configuración global de Stripe gestionada desde el admin."""
+    public_key = models.CharField(max_length=255, blank=True)
+    secret_key = models.CharField(max_length=255, blank=True)
+    webhook_secret = models.CharField(max_length=255, blank=True)
+    is_live = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Configuración de Stripe"
+        verbose_name_plural = "Configuración de Stripe"
+
+    def __str__(self):
+        return "Configuración de Stripe " + ("(LIVE)" if self.is_live else "(TEST)")
+
+    @classmethod
+    def get_config(cls):
+        return cls.objects.first() or cls.objects.create()
+
+class Checklist(models.Model):
+    """Plantilla de checklist creada por una agencia."""
+    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='checklists')
+    nombre = models.CharField(max_length=200)
+    creado_el = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.nombre} ({self.agencia.nombre})"
+
+    class Meta:
+        verbose_name = "Plantilla de Checklist"
+        verbose_name_plural = "Plantillas de Checklists"
+
+class ChecklistItem(models.Model):
+    """Ítem dentro de una plantilla de checklist."""
+    checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE, related_name='items')
+    texto = models.CharField(max_length=500)
+    orden = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['orden']
+        verbose_name = "Ítem de Plantilla"
+        verbose_name_plural = "Ítems de Plantilla"
+
+class CaseChecklist(models.Model):
+    """Checklist específico asignado a un caso."""
+    caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name='checklists_asignados')
+    checklist_template = models.ForeignKey(Checklist, on_delete=models.SET_NULL, null=True, blank=True)
+    nombre = models.CharField(max_length=200)
+    fecha_asignado = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.nombre} - {self.caso.titulo}"
+
+    class Meta:
+        verbose_name = "Checklist Asignado"
+        verbose_name_plural = "Checklists Asignados"
+
+class CaseChecklistItem(models.Model):
+    """Ítem individual dentro de un checklist asignado a un caso."""
+    case_checklist = models.ForeignKey(CaseChecklist, on_delete=models.CASCADE, related_name='items')
+    texto = models.CharField(max_length=500)
+    completado = models.BooleanField(default=False)
+    orden = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['orden']
+        verbose_name = "Ítem de Checklist Asignado"
+        verbose_name_plural = "Ítems de Checklists Asignados"
+
+
+
+================================================================================
+📁 ARCHIVO: crm/signals.py
+📏 Tamaño: 454 bytes
+================================================================================
+
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from django.utils import timezone
+from .models import Actividad
+
+@receiver(pre_save, sender=Actividad)
+def registrar_fecha_completada(sender, instance, **kwargs):
+    if instance.status == 'COMPLETADA' and not instance.fecha_completada:
+        instance.fecha_completada = timezone.now()
+    elif instance.status != 'COMPLETADA':
+        instance.fecha_completada = None
+
+
+================================================================================
+📁 ARCHIVO: crm/sitemaps.py
+📏 Tamaño: 265 bytes
+================================================================================
+
+from django.contrib.sitemaps import Sitemap
+from django.urls import reverse
+
+class StaticViewSitemap(Sitemap):
+    priority = 0.8
+    changefreq = "daily"
+
+    def items(self):
+        return ["dashboard"]
+
+    def location(self, item):
+        return reverse(item)
+
+================================================================================
+📁 ARCHIVO: crm/tests.py
+📏 Tamaño: 60 bytes
+================================================================================
+
+from django.test import TestCase
+
+# Create your tests here.
+
+
+================================================================================
+📁 ARCHIVO: crm/urls.py
+📏 Tamaño: 890 bytes
+================================================================================
+
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.dashboard, name='dashboard'),
+    path('caso/nuevo/', views.crear_caso, name='crear_caso'),
+    path('pricing/', views.pricing, name='pricing'),
+    path('funnel/', views.funnel_view, name='funnel'),
+    path('portal/', views.client_portal, name='client_portal'),
+    path('caso/<int:pk>/', views.case_detail, name='case_detail'),
+    path('caso/<int:pk>/archivar/', views.archive_case, name='archive_case'),
+    path('credencial/<int:pk>/validar/', views.validar_acceso_credencial, name='validar_credencial'),
+    path('checkout/<str:plan_key>/', views.checkout_session, name='checkout_session'),
+    path('settings/', views.global_settings, name='global_settings'),
+    path('settings/form/<int:pk>/', views.form_settings, name='form_settings'),
+    path('logout/', views.logout_view, name='logout'),
+]
+
+
+================================================================================
+📁 ARCHIVO: crm/views.py
+📏 Tamaño: 47111 bytes
+================================================================================
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from django.contrib import messages
+from .models import (
+    Caso, CaseStatus, Actividad, Documento, ActualizacionCliente,
+    MensajeCliente, ConfiguracionMensajes, ConfiguracionDashboard, Credencial,
+    Checklist, CaseChecklist, CaseChecklistItem, TipoCaso, SubTipoCaso, CategoriaDocumento
+)
+from django.contrib.auth.forms import AuthenticationForm
+from .forms import DocumentoClienteForm, MensajeClienteForm, ActualizacionForm, NuevoCasoForm
+from formularios.models import Formulario, RespuestaFormulario
+from django.core.paginator import Paginator
+from .constants import PLAN_DETAILS
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  PREPARADOR: DASHBOARD
+# ─────────────────────────────────────────────────────────────────────────────
+def pricing(request):
+    # Security: Clients don't manage agency subscriptions
+    if request.user.is_authenticated and request.user.profile.tipo == 'CLIENTE':
+        return redirect('client_portal')
+
+    # Convertir a lista para facilitar el rendering
+    planes = []
+    for plan_key, detail in PLAN_DETAILS.items():
+        if plan_key != 'ENTERPRISE': # Enterprise se maneja aparte al final
+            detail['key'] = plan_key
+            planes.append(detail)
+    
+    enterprise = PLAN_DETAILS['ENTERPRISE']
+    enterprise['key'] = 'ENTERPRISE'
+
+    context = {
+        'planes': planes,
+        'enterprise': enterprise,
+    }
+    return render(request, 'crm/pricing.html', context)
+
+
+# @login_required (Removed to allow landing page reach unauthenticated users)
+def dashboard(request):
+    if not request.user.is_authenticated:
+        if request.method == 'POST':
+            form = AuthenticationForm(request, data=request.POST)
+            if form.is_valid():
+                user = form.get_user()
+                if getattr(user.profile, 'is_demo', False):
+                    from django.core.management import call_command
+                    call_command('setup_demo')
+                    messages.info(request, "🛡️ Modo Demo Activado: Los datos se han reseteado para tu exploración. Nada de lo que crees aquí es persistente.")
+                    user.refresh_from_db()
+                login(request, user)
+                return redirect('dashboard')
+        else:
+            form = AuthenticationForm()
+        return render(request, 'crm/landing.html', {'form': form})
+    # Multi-tenant: obtain agency
+    if not hasattr(request.user, 'profile'):
+        messages.error(request, "Tu usuario no tiene una agencia asignada. Contacta al soporte.")
+        return redirect('logout')
+        
+    # Security Check: Clients should go to their dedicated portal, not the staff dashboard
+    if request.user.profile.tipo == 'CLIENTE':
+        return redirect('client_portal')
+
+    agencia = request.user.profile.agencia
+
+    hoy = timezone.now().date()
+    # Base de actividades del preparador (filtrado por agencia)
+    actividades_base = Actividad.objects.filter(
+        caso__agencia=agencia
+    ).exclude(status='COMPLETADA').select_related('caso')
+
+    vencidas = actividades_base.filter(fecha_vencimiento__lt=hoy).order_by('fecha_vencimiento')
+    tareas_hoy = actividades_base.filter(fecha_programada=hoy).order_by('prioridad_alta', 'fecha_vencimiento')
+
+    # Mensajes no respondidos: casos donde el último mensaje es del cliente
+    casos_con_mensajes = Caso.objects.filter(preparador=request.user).prefetch_related('mensajes')
+    threads_sin_respuesta = []
+    for caso in casos_con_mensajes:
+        ultimo = caso.mensajes.last()
+        if ultimo and ultimo.remitente == caso.beneficiario_principal:
+            threads_sin_respuesta.append({
+                'caso': caso,
+                'ultimo_mensaje': ultimo,
+                'total': caso.mensajes.count(),
+            })
+
+    # Handle reply from dashboard
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'dashboard_reply':
+            caso_pk = request.POST.get('caso_pk')
+            contenido = request.POST.get('contenido', '').strip()
+            caso_obj = get_object_or_404(Caso, pk=caso_pk, preparador=request.user)
+            if contenido:
+                MensajeCliente.objects.create(
+                    caso=caso_obj,
+                    remitente=request.user,
+                    contenido=contenido,
+                    leido=True,
+                )
+                messages.success(request, f'💬 Respuesta enviada en "{caso_obj.titulo}".')
+            return redirect('dashboard')
+
+    # Actividades próximas a vencer (por agencia)
+    config_dash = ConfiguracionDashboard.get_config(agencia)
+    fecha_limite = hoy + timezone.timedelta(days=config_dash.dias_proximos_vencer)
+    proximas_vencer = actividades_base.filter(
+        fecha_vencimiento__gt=hoy,
+        fecha_vencimiento__lte=fecha_limite
+    ).exclude(fecha_programada=hoy).order_by('fecha_vencimiento')
+
+    # Documentos recientes de su agencia
+    documentos_recientes = Documento.objects.filter(
+        caso__agencia=agencia
+    ).order_by('-fecha_subida')[:10]
+
+    # Todos los casos de la agencia (No archivados por defecto)
+    mostrar_archivados = request.GET.get('ver') == 'archivados'
+    casos_preparador_qs = Caso.objects.filter(agencia=agencia, esta_archivado=mostrar_archivados).order_by('-fecha_apertura')
+    
+    # Filtro de búsqueda
+    from django.db.models import Q
+    query = request.GET.get('q')
+    if query:
+        casos_preparador_qs = casos_preparador_qs.filter(
+            Q(titulo__icontains=query) |
+            Q(sub_tipo__nombre__icontains=query) |
+            Q(tipo__nombre__icontains=query) |
+            Q(beneficiario_principal__first_name__icontains=query) |
+            Q(beneficiario_principal__last_name__icontains=query) |
+            Q(beneficiario_principal__username__icontains=query) |
+            Q(preparador__first_name__icontains=query) |
+            Q(preparador__last_name__icontains=query) |
+            Q(preparador__username__icontains=query) |
+            Q(derivados__nombre__icontains=query) |
+            Q(derivados__apellido__icontains=query)
+        ).distinct()
+    
+    # Paginación (Obligatoria según requerimiento)
+    paginator = Paginator(casos_preparador_qs, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Info de Plan y Límites
+    limites = agencia.limites_actuales
+    casos_activos = agencia.casos_activos_count
+    porcentaje_uso = agencia.uso_casos_porcentaje
+    
+    plan_warning = None
+    if porcentaje_uso >= 100:
+        plan_warning = "danger"
+    elif porcentaje_uso >= 80:
+        plan_warning = "warning"
+
+    # Información de Demo
+    is_demo = request.user.profile.is_demo
+
+    # Form for creating new cases
+    nuevo_caso_form = NuevoCasoForm(agencia=agencia)
+
+    context = {
+        'vencidas': vencidas,
+        'tareas_hoy': tareas_hoy,
+        'proximas_vencer': proximas_vencer,
+        'config_dash': config_dash,
+        'threads_sin_respuesta': threads_sin_respuesta,
+        'documentos_recientes': documentos_recientes,
+        'page_obj': page_obj,
+        'agencia': agencia,
+        'limites': limites,
+        'casos_activos': casos_activos,
+        'porcentaje_uso': porcentaje_uso,
+        'plan_warning': plan_warning,
+        'ver_archivados': mostrar_archivados,
+        'is_demo': is_demo,
+        'nuevo_caso_form': nuevo_caso_form,
+    }
+    return render(request, 'crm/dashboard.html', context)
+
+
+@login_required
+def crear_caso(request):
+    """Create a new case from the dashboard modal."""
+    profile = request.user.profile
+    if profile.tipo != 'MIEMBRO':
+        return redirect('client_portal')
+
+    agencia = profile.agencia
+
+    if request.method != 'POST':
+        return redirect('dashboard')
+
+    form = NuevoCasoForm(request.POST, agencia=agencia)
+    if not form.is_valid():
+        for field, errors in form.errors.items():
+            for error in errors:
+                messages.error(request, f'{form.fields[field].label if field in form.fields else field}: {error}')
+        return redirect('dashboard')
+
+    # Check plan limit
+    limites = agencia.limites_actuales
+    if agencia.casos_activos_count >= limites['casos']:
+        messages.error(request, f'⚠️ Límite de casos alcanzado ({limites["casos"]}) para el plan {agencia.plan}. Archiva casos o cambia de plan.')
+        return redirect('dashboard')
+
+    from django.contrib.auth.models import User
+    from .models import UserProfile, Credencial
+
+    # Create or get client user
+    username_cliente = form.cleaned_data['username_cliente']
+    password_cliente = form.cleaned_data['password_cliente']
+    nombre_cliente = form.cleaned_data['nombre_cliente']
+    email_cliente = form.cleaned_data.get('email_cliente', '')
+
+    if User.objects.filter(username=username_cliente).exists():
+        cliente_user = User.objects.get(username=username_cliente)
+        # Update password if provided
+        cliente_user.set_password(password_cliente)
+        cliente_user.save()
+    else:
+        # Split name into first/last
+        name_parts = nombre_cliente.split(' ', 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+
+        cliente_user = User.objects.create_user(
+            username=username_cliente,
+            password=password_cliente,
+            first_name=first_name,
+            last_name=last_name,
+            email=email_cliente,
+            is_staff=False,
+        )
+        # Create UserProfile as CLIENTE for this agency
+        UserProfile.objects.create(
+            user=cliente_user,
+            agencia=agencia,
+            tipo='CLIENTE',
+        )
+
+    # Create the case
+    caso = Caso(
+        agencia=agencia,
+        titulo=form.cleaned_data['titulo'],
+        tipo=form.cleaned_data['tipo'],
+        sub_tipo=form.cleaned_data['sub_tipo'],
+        beneficiario_principal=cliente_user,
+        preparador=form.cleaned_data['preparador'],
+        status_actual=form.cleaned_data['status_inicial'],
+    )
+    caso.save()
+
+    # Auto-save client portal credentials to the vault
+    Credencial.objects.create(
+        caso=caso,
+        sitio_web='Portal MyVisaCRM',
+        usuario=username_cliente,
+        password=password_cliente,
+    )
+
+    messages.success(request, f'✅ Caso "{caso.titulo}" creado exitosamente y asignado a {caso.preparador.get_full_name() or caso.preparador.username}.')
+    # Use ?success=true to avoid the demo reset in dashboard view
+    return redirect('/?success=true')
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  PREPARADOR: FUNNEL / KANBAN
+# ─────────────────────────────────────────────────────────────────────────────
+@login_required
+def funnel_view(request):
+    if request.user.profile.tipo != 'MIEMBRO':
+        return redirect('client_portal')
+
+    tipo_filtro = request.GET.get('tipo', '')
+    sub_tipo_filtro = request.GET.get('sub_tipo', '')
+    view_type = request.GET.get('view', 'kanban') # Default to kanban
+
+    agencia = request.user.profile.agencia
+    estados = CaseStatus.objects.filter(agencia=agencia).order_by('orden')
+    casos_preparador = Caso.objects.filter(agencia=agencia).select_related('status_actual', 'tipo', 'sub_tipo')
+
+    if tipo_filtro:
+        casos_preparador = casos_preparador.filter(tipo_id=tipo_filtro)
+    if sub_tipo_filtro:
+        casos_preparador = casos_preparador.filter(sub_tipo_id=sub_tipo_filtro)
+
+    # Grouping by status for Kanban
+    casos_por_estado = {estado: [] for estado in estados}
+    for caso in casos_preparador:
+        if caso.status_actual in casos_por_estado:
+            casos_por_estado[caso.status_actual].append(caso)
+
+    # Grouping by Type for Horizontal Swimlanes
+    tipos = TipoCaso.objects.filter(agencia=agencia)
+    casos_por_tipo = {tipo: [] for tipo in tipos}
+    for caso in casos_preparador:
+        if caso.tipo in casos_por_tipo:
+            casos_por_tipo[caso.tipo].append(caso)
+
+    context = {
+        'estados': estados,
+        'casos_por_estado':    casos_por_estado,
+        'casos_por_tipo': casos_por_tipo,
+        'tipo_actual': tipo_filtro,
+        'sub_tipo_actual': sub_tipo_filtro,
+        'view_type': view_type,
+        'tipos': tipos,
+        'sub_tipos': SubTipoCaso.objects.filter(tipo_caso__agencia=agencia),
+    }
+    return render(request, 'crm/funnel.html', context)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  CLIENTE: PORTAL
+# ─────────────────────────────────────────────────────────────────────────────
+@login_required
+def client_portal(request):
+    casos = Caso.objects.filter(beneficiario_principal=request.user).order_by('-fecha_apertura')
+    
+    # Support multiple cases for the same client: select via GET parameter if provided
+    caso_pk = request.GET.get('c')
+    if caso_pk:
+        caso_actual = get_object_or_404(Caso, pk=caso_pk, beneficiario_principal=request.user)
+    else:
+        caso_actual = casos.first()
+
+    agencia = caso_actual.agencia if caso_actual else None
+
+    config = ConfiguracionMensajes.get_config(agencia) if agencia else None
+    doc_form = DocumentoClienteForm()
+    msg_form = MensajeClienteForm()
+    mensajes_periodo = 0
+    puede_enviar_mensaje = False
+
+    if caso_actual and config:
+        mensajes_periodo = MensajeCliente.mensajes_periodo_count(request.user, caso_actual)
+        puede_enviar_mensaje = mensajes_periodo < config.limite
+
+    if request.method == 'POST' and caso_actual:
+        action = request.POST.get('action')
+
+        if action == 'upload_doc':
+            doc_form = DocumentoClienteForm(request.POST, request.FILES)
+            if doc_form.is_valid():
+                doc = doc_form.save(commit=False)
+                doc.caso = caso_actual
+                cat_cliente, _ = CategoriaDocumento.objects.get_or_create(
+                    agencia=agencia, 
+                    nombre='Subido por Cliente'
+                )
+                doc.categoria = cat_cliente
+                doc.user_can_view = True
+                doc.save()
+                messages.success(request, '✅ Tu documento fue enviado correctamente al preparador.')
+                return redirect('client_portal')
+            else:
+                messages.error(request, '⚠️ Hubo un error al subir el archivo. Verifica los datos.')
+
+        elif action == 'send_message':
+            if not puede_enviar_mensaje:
+                periodo_label = config.get_periodo_display().lower()
+                messages.error(
+                    request,
+                    f'⛔ Has alcanzado el límite de {config.limite} mensajes {periodo_label}. '
+                    'Intenta más tarde.'
+                )
+            else:
+                msg_form = MensajeClienteForm(request.POST)
+                if msg_form.is_valid():
+                    msg = msg_form.save(commit=False)
+                    msg.caso = caso_actual
+                    msg.remitente = request.user
+                    msg.save()
+                    messages.success(request, '💬 Tu mensaje fue enviado al preparador.')
+                    return redirect('client_portal')
+
+    documentos_visibles = []
+    if caso_actual:
+        documentos_visibles = caso_actual.documentos.filter(user_can_view=True).order_by('-fecha_subida')
+        mensajes_del_caso = caso_actual.mensajes.all()
+    else:
+        mensajes_del_caso = MensajeCliente.objects.none()
+
+    context = {
+        'casos': casos,
+        'caso_actual': caso_actual,
+        'doc_form': doc_form,
+        'msg_form': msg_form,
+        'documentos_visibles': documentos_visibles,
+        'mensajes_del_caso': mensajes_del_caso,
+        'mensajes_periodo': mensajes_periodo,
+        'limite_mensajes': config.limite if config else 0,
+        'periodo_label': config.get_periodo_display() if config else 'N/A',
+        'puede_enviar_mensaje': puede_enviar_mensaje,
+        'respuestas_formularios': caso_actual.respuestas_formularios.all() if caso_actual else [],
+        'categorias_documentos': CategoriaDocumento.objects.filter(agencia=agencia) if agencia else [],
+    }
+    return render(request, 'crm/portal.html', context)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  PREPARADOR: DETALLE DEL CASO
+# ─────────────────────────────────────────────────────────────────────────────
+@login_required
+def case_detail(request, pk):
+    profile = request.user.profile
+    agencia = profile.agencia
+    
+    # Security: 
+    # 1. Company members see all cases in their agency.
+    # 2. Clients should NEVER see the internal case detail view.
+    if profile.tipo == 'CLIENTE':
+        return redirect(f'/portal/?c={pk}')
+    
+    caso = get_object_or_404(Caso, pk=pk, agencia=agencia)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'reply_message':
+            contenido = request.POST.get('contenido', '').strip()
+            if contenido:
+                MensajeCliente.objects.create(
+                    caso=caso,
+                    remitente=request.user,
+                    contenido=contenido,
+                    leido=True,
+                )
+                messages.success(request, '💬 Respuesta enviada al cliente.')
+            else:
+                messages.error(request, 'El mensaje no puede estar vacío.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'update_status':
+            actividad_id = request.POST.get('actividad_id')
+            nuevo_status = request.POST.get('nuevo_status')
+            VALID_STATUSES = [s[0] for s in Actividad.STATUS_TAREA]
+            if actividad_id and nuevo_status in VALID_STATUSES:
+                actividad = get_object_or_404(Actividad, pk=actividad_id, caso=caso)
+                actividad.status = nuevo_status
+                actividad.save()
+                messages.success(request, f'✅ Tarea actualizada a "{actividad.get_status_display()}".')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'add_actualizacion':
+            mensaje = request.POST.get('mensaje', '').strip()
+            if mensaje:
+                ActualizacionCliente.objects.create(caso=caso, mensaje=mensaje)
+                messages.success(request, '📋 Actualización publicada. El cliente ya puede verla.')
+            else:
+                messages.error(request, 'La actualización no puede estar vacía.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'assign_form':
+            formulario_id = request.POST.get('formulario_id')
+            if formulario_id:
+                formulario = get_object_or_404(Formulario, pk=formulario_id)
+                # Check if already assigned
+                if not RespuestaFormulario.objects.filter(caso=caso, formulario=formulario).exists():
+                    RespuestaFormulario.objects.create(caso=caso, formulario=formulario)
+                    messages.success(request, f'📝 Formulario "{formulario.nombre}" asignado al cliente.')
+                else:
+                    messages.warning(request, 'Este formulario ya está asignado a este caso.')
+            return redirect('case_detail', pk=pk)
+            
+        elif action == 'assign_checklist':
+            checklist_id = request.POST.get('checklist_id')
+            if checklist_id:
+                checklist = get_object_or_404(Checklist, pk=checklist_id, agencia=agencia)
+                case_checklist = CaseChecklist.objects.create(
+                    caso=caso,
+                    checklist_template=checklist,
+                    nombre=checklist.nombre
+                )
+                for item in checklist.items.all():
+                    CaseChecklistItem.objects.create(
+                        case_checklist=case_checklist,
+                        texto=item.texto,
+                        orden=item.orden
+                    )
+                messages.success(request, f'✅ Checklist "{checklist.nombre}" asignado al caso.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'toggle_checklist_item':
+            item_id = request.POST.get('item_id')
+            if item_id:
+                item = get_object_or_404(CaseChecklistItem, pk=item_id, case_checklist__caso=caso)
+                item.completado = not item.completado
+                item.save()
+            return redirect('case_detail', pk=pk)
+        
+        elif action == 'toggle_chat':
+            caso.chat_habilitado = not caso.chat_habilitado
+            caso.save()
+            estado = "HABILITADO" if caso.chat_habilitado else "DESHABILITADO"
+            messages.info(request, f'💬 El chat ha sido {estado} para este caso.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'add_credencial':
+            sitio = request.POST.get('cred_sitio', '').strip()
+            usuario = request.POST.get('cred_usuario', '').strip()
+            password = request.POST.get('cred_password', '').strip()
+            if sitio and usuario:
+                Credencial.objects.create(
+                    caso=caso,
+                    sitio_web=sitio,
+                    usuario=usuario,
+                    password=password,
+                )
+                messages.success(request, f'🔐 Credencial para "{sitio}" guardada en la bóveda.')
+            else:
+                messages.error(request, 'Debes indicar al menos el sitio y el usuario.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'add_documento':
+            from .forms import DocumentoClienteForm
+            doc_form = DocumentoClienteForm(request.POST, request.FILES)
+            if doc_form.is_valid():
+                doc = doc_form.save(commit=False)
+                doc.caso = caso
+                cat_id = request.POST.get('categoria')
+                if cat_id:
+                    from .models import CategoriaDocumento
+                    doc.categoria = get_object_or_404(CategoriaDocumento, id=cat_id, agencia=agencia)
+                doc.user_can_view = request.POST.get('user_can_view') == 'on'
+                doc.save()
+                messages.success(request, f'📄 Documento "{doc.nombre_documento}" subido correctamente.')
+            else:
+                messages.error(request, 'Error al subir el documento. Verifica los campos.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'add_tarea':
+            titulo_tarea = request.POST.get('titulo_tarea', '').strip()
+            detalle_tarea = request.POST.get('detalle_tarea', '').strip()
+            fecha_programada = request.POST.get('fecha_programada') or None
+            fecha_vencimiento = request.POST.get('fecha_vencimiento') or None
+            prioridad_alta = request.POST.get('prioridad_alta') == 'on'
+            if titulo_tarea:
+                Actividad.objects.create(
+                    caso=caso,
+                    titulo=titulo_tarea,
+                    detalle=detalle_tarea,
+                    fecha_programada=fecha_programada,
+                    fecha_vencimiento=fecha_vencimiento,
+                    prioridad_alta=prioridad_alta,
+                )
+                messages.success(request, f'✅ Tarea "{titulo_tarea}" creada.')
+            else:
+                messages.error(request, 'El título de la tarea es obligatorio.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'edit_case':
+            nuevo_tipo_id = request.POST.get('tipo_id', '')
+            nuevo_sub_tipo_id = request.POST.get('sub_tipo_id', '')
+            nuevo_preparador_id = request.POST.get('preparador_id', '')
+            nuevo_status_id = request.POST.get('status_id', '')
+
+            if nuevo_tipo_id:
+                caso.tipo_id = nuevo_tipo_id
+            if nuevo_sub_tipo_id:
+                caso.sub_tipo_id = nuevo_sub_tipo_id
+            if nuevo_preparador_id:
+                caso.preparador_id = nuevo_preparador_id
+            if nuevo_status_id:
+                caso.status_actual_id = nuevo_status_id
+            
+            caso.save()
+            messages.success(request, '✅ Detalles del caso actualizados.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'add_derivado':
+            nombre = request.POST.get('nombre', '').strip()
+            apellido = request.POST.get('apellido', '').strip()
+            telefono = request.POST.get('telefono', '').strip()
+            email = request.POST.get('email', '').strip()
+            if nombre and apellido:
+                from .models import Derivado
+                Derivado.objects.create(
+                    caso=caso,
+                    nombre=nombre,
+                    apellido=apellido,
+                    telefono=telefono,
+                    email=email,
+                )
+                messages.success(request, f'👨‍👩‍👧‍👦 Familiar "{nombre} {apellido}" agregado al caso.')
+            else:
+                messages.error(request, 'Nombre y Apellido son obligatorios.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'edit_derivado':
+            derivado_id = request.POST.get('derivado_id')
+            from .models import Derivado
+            derivado = get_object_or_404(Derivado, pk=derivado_id, caso=caso)
+            derivado.nombre = request.POST.get('nombre', '').strip()
+            derivado.apellido = request.POST.get('apellido', '').strip()
+            derivado.telefono = request.POST.get('telefono', '').strip()
+            derivado.email = request.POST.get('email', '').strip()
+            derivado.save()
+            messages.success(request, f'✅ Familiar "{derivado.nombre}" actualizado.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'delete_derivado':
+            derivado_id = request.POST.get('derivado_id')
+            from .models import Derivado
+            derivado = get_object_or_404(Derivado, pk=derivado_id, caso=caso)
+            nombre_del = derivado.nombre
+            derivado.delete()
+            messages.warning(request, f'🗑️ Familiar "{nombre_del}" eliminado del caso.')
+            return redirect('case_detail', pk=pk)
+
+    # Marcar mensajes del cliente como leídos
+    caso.mensajes.filter(leido=False, remitente=caso.beneficiario_principal).update(leido=True)
+
+    act_form = ActualizacionForm()
+
+    from .models import UserProfile, CategoriaDocumento
+    from django.contrib.auth.models import User
+    team_user_ids = UserProfile.objects.filter(agencia=agencia, tipo='MIEMBRO').values_list('user_id', flat=True)
+    preparadores = User.objects.filter(id__in=team_user_ids)
+    estados = CaseStatus.objects.filter(agencia=agencia).order_by('orden')
+
+    context = {
+        'caso': caso,
+        'esta_archivado': caso.esta_archivado,
+        'actividades': caso.actividades.all(),
+        'documentos': caso.documentos.all().order_by('-fecha_subida'),
+        'derivados': caso.derivados.all(),
+        'credenciales': caso.credenciales.all(),
+        'actualizaciones': caso.actualizaciones.all(),
+        'mensajes': caso.mensajes.all(),
+        'status_choices': Actividad.STATUS_TAREA,
+        'act_form': act_form,
+        'formularios_disponibles': Formulario.objects.filter(agencia=agencia, activo=True),
+        'respuestas_formularios': caso.respuestas_formularios.all(),
+        'checklists_disponibles': Checklist.objects.filter(agencia=agencia),
+        'checklists_asignados': caso.checklists_asignados.all().prefetch_related('items'),
+        'tipos_choices': TipoCaso.objects.filter(agencia=agencia),
+        'sub_tipos_choices': SubTipoCaso.objects.filter(tipo_caso__agencia=agencia),
+        'preparadores': preparadores,
+        'estados': estados,
+        'categorias_documentos': CategoriaDocumento.objects.filter(agencia=agencia),
+    }
+    return render(request, 'crm/case_detail.html', context)
+
+@login_required
+def archive_case(request, pk):
+    profile = request.user.profile
+    if profile.tipo != 'MIEMBRO':
+        return redirect('client_portal')
+    
+    agencia = request.user.profile.agencia
+    caso = get_object_or_404(Caso, pk=pk, agencia=agencia)
+    
+    if request.method == 'POST':
+        if not caso.esta_archivado:
+            caso.esta_archivado = True
+            caso.save()
+            messages.success(request, f"📦 Caso '{caso.titulo}' archivado correctamente. No contará en el límite de su plan.")
+        return redirect('dashboard')
+    
+    return render(request, 'crm/archive_confirm.html', {'caso': caso})
+
+
+@login_required
+def logout_view(request):
+    is_demo = getattr(request.user.profile, 'is_demo', False)
+    if is_demo:
+        from django.core.management import call_command
+        call_command('setup_demo')
+    logout(request)
+    return redirect('dashboard')
+
+
+def checkout_session(request, plan_key):
+    """Crea una sesión de Stripe Checkout para el plan seleccionado."""
+    import stripe
+    from .models import StripeConfig
+    
+    if request.user.is_authenticated and request.user.profile.tipo != 'MIEMBRO':
+        return redirect('client_portal')
+
+    agencia = getattr(request.user.profile, 'agencia', None) if hasattr(request.user, 'profile') else None
+    config = StripeConfig.get_config()
+    
+    if not config.secret_key:
+        messages.error(request, "Stripe no está configurado en el admin.")
+        return redirect('pricing')
+        
+    stripe.api_key = config.secret_key
+    
+    from .constants import PLAN_DETAILS
+    plan = PLAN_DETAILS.get(plan_key)
+    if not plan or plan_key == 'ENTERPRISE':
+        return redirect('pricing')
+
+    # En una implementación real, tendríamos IDs de precios de Stripe en constants o DB
+    # Para esta demo, usamos el nombre y precio dinámico
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {
+                        'name': f"Plan {plan_key} - Visa Power CRM",
+                    },
+                    'unit_amount': int(plan['precio'] * 100),
+                    'recurring': {'interval': 'month'},
+                },
+                'quantity': 1,
+            }],
+            mode='subscription',
+            success_url=request.build_absolute_uri('/') + '?success=true',
+            cancel_url=request.build_absolute_uri('/pricing/') + '?cancel=true',
+            customer_email=request.user.email if request.user.is_authenticated else None,
+            metadata={
+                'agencia_id': agencia.id if agencia else 'NEW_AGENCY', 
+                'plan': plan_key,
+                'user_id': request.user.id if request.user.is_authenticated else 'GUEST'
+            }
+        )
+        return redirect(session.url, code=303)
+    except Exception as e:
+        messages.error(request, f"Error al contactar con Stripe: {str(e)}")
+        return redirect('pricing')
+
+from django.http import JsonResponse
+import logging
+logger = logging.getLogger(__name__)
+
+@login_required
+def validar_acceso_credencial(request, pk):
+    """Valida la clave del Preparador antes de entregar el password desencriptado."""
+    if not hasattr(request.user, 'profile'):
+        return JsonResponse({'status': 'error', 'message': 'Sin agencia'}, status=403)
+        
+    agencia = request.user.profile.agencia
+    if request.method == 'POST' and request.user.profile.tipo == 'MIEMBRO':
+        password_preparador = request.POST.get('password_preparador')
+        if request.user.check_password(password_preparador):
+            credencial = get_object_or_404(Credencial, pk=pk, caso__agencia=agencia)
+            decrypted_pass = credencial.get_password()
+            
+            # Log de auditoría
+            logger.info(f"AUDITORÍA: El usuario {request.user.username} accedió a la credencial {credencial.sitio_web} del caso {credencial.caso.id}")
+            
+            return JsonResponse({'status': 'ok', 'password': decrypted_pass})
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Contraseña incorrecta'}, status=403)
+    
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+@login_required
+def global_settings(request):
+    """View to manage agency-specific settings: checklists, forms, status, limits and team."""
+    profile = request.user.profile
+    if profile.tipo != 'MIEMBRO':
+        return redirect('client_portal')
+    
+    agencia = profile.agencia
+    
+    # Forms from both apps
+    from .forms import (
+        ChecklistForm, ChecklistItemForm, CaseStatusForm, ConfigMensajesForm, 
+        PreparadorForm, TipoCasoForm, SubTipoCasoForm, CategoriaDocumentoForm
+    )
+    from formularios.forms import FormularioForm, SeccionForm, PreguntaForm
+    from formularios.models import Formulario, Seccion, Pregunta
+    from .models import UserProfile, TipoCaso, SubTipoCaso, CategoriaDocumento
+    
+    # ─────────────────────────────────────────────────────────────────────────────
+    #  HANDLING POST ACTIONS
+    # ─────────────────────────────────────────────────────────────────────────────
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        # --- Checklist ---
+        if action == 'add_checklist':
+            form = ChecklistForm(request.POST)
+            if form.is_valid():
+                checklist = form.save(commit=False)
+                checklist.agencia = agencia
+                checklist.save()
+                messages.success(request, f'✅ Plantilla "{checklist.nombre}" creada.')
+        
+        elif action == 'add_checklist_item':
+            cid = request.POST.get('checklist_id')
+            checklist = get_object_or_404(Checklist, id=cid, agencia=agencia)
+            form = ChecklistItemForm(request.POST)
+            if form.is_valid():
+                item = form.save(commit=False)
+                item.checklist = checklist
+                item.save()
+                messages.success(request, '✅ Ítem agregado a la plantilla.')
+        
+        # --- Case Status ---
+        elif action == 'add_status':
+            form = CaseStatusForm(request.POST)
+            if form.is_valid():
+                status = form.save(commit=False)
+                status.agencia = agencia
+                status.save()
+                messages.success(request, f'✅ Estado "{status.nombre}" agregado.')
+        
+        # --- Config Messages ---
+        elif action == 'update_config_mensajes':
+            config = ConfiguracionMensajes.get_config(agencia)
+            form = ConfigMensajesForm(request.POST, instance=config)
+            if form.is_valid():
+                form.save()
+                messages.success(request, '✅ Configuración de mensajes actualizada.')
+        
+        # --- Team / Preparadores ---
+        elif action == 'add_preparador':
+            form = PreparadorForm(request.POST)
+            if form.is_valid():
+                from django.contrib.auth.models import User
+                u = User.objects.create_user(
+                    username=form.cleaned_data['username'],
+                    email=form.cleaned_data['email'],
+                    password=form.cleaned_data['password'],
+                    first_name=form.cleaned_data['first_name'],
+                    last_name=form.cleaned_data['last_name']
+                )
+                UserProfile.objects.create(
+                    user=u,
+                    agencia=agencia,
+                    tipo='MIEMBRO',
+                    es_admin_agencia=form.cleaned_data['es_admin']
+                )
+                messages.success(request, f'✅ Preparador "{u.username}" registrado.')
+        
+        # --- Forms (formularios app) ---
+        elif action == 'add_formulario':
+            form = FormularioForm(request.POST)
+            if form.is_valid():
+                formulario_obj = form.save(commit=False)
+                formulario_obj.agencia = agencia
+                formulario_obj.save()
+                messages.success(request, '✅ Molde de formulario creado.')
+
+        # --- Case Types ---
+        elif action == 'add_tipo_caso':
+            form = TipoCasoForm(request.POST)
+            if form.is_valid():
+                tc = form.save(commit=False)
+                tc.agencia = agencia
+                tc.save()
+                messages.success(request, f'✅ Tipo de caso "{tc.nombre}" creado.')
+
+        elif action == 'add_sub_tipo_caso':
+            form = SubTipoCasoForm(request.POST, agencia=agencia)
+            if form.is_valid():
+                form.save()
+                messages.success(request, '✅ Sub-tipo de caso creado.')
+
+        elif action == 'add_categoria_documento':
+            form = CategoriaDocumentoForm(request.POST)
+            if form.is_valid():
+                cd = form.save(commit=False)
+                cd.agencia = agencia
+                cd.save()
+                messages.success(request, f'✅ Categoría "{cd.nombre}" creada.')
+
+        elif action == 'delete_categoria_documento':
+            cid = request.POST.get('categoria_id')
+            cd = get_object_or_404(CategoriaDocumento, id=cid, agencia=agencia)
+            nombre_del = cd.nombre
+            cd.delete()
+            messages.warning(request, f'🗑️ Categoría "{nombre_del}" eliminada.')
+
+        elif action == 'edit_categoria_documento':
+            cid = request.POST.get('categoria_id')
+            cd = get_object_or_404(CategoriaDocumento, id=cid, agencia=agencia)
+            cd.nombre = request.POST.get('nombre', cd.nombre).strip()
+            if cd.nombre:
+                cd.save()
+                messages.success(request, f'✅ Categoría "{cd.nombre}" actualizada.')
+
+        elif action == 'edit_preparador':
+            profile_id = request.POST.get('profile_id')
+            p = get_object_or_404(UserProfile, id=profile_id, agencia=agencia)
+            u = p.user
+            u.first_name = request.POST.get('first_name', u.first_name).strip()
+            u.last_name = request.POST.get('last_name', u.last_name).strip()
+            u.email = request.POST.get('email', u.email).strip()
+            p.es_admin_agencia = request.POST.get('es_admin') == 'on'
+            u.save()
+            p.save()
+            messages.success(request, f'✅ Usuario "{u.username}" actualizado.')
+
+        elif action == 'edit_tipo_caso':
+            tid = request.POST.get('tipo_id')
+            tc = get_object_or_404(TipoCaso, id=tid, agencia=agencia)
+            tc.nombre = request.POST.get('nombre', tc.nombre).strip()
+            tc.save()
+            messages.success(request, f'✅ Tipo de caso "{tc.nombre}" actualizado.')
+        
+        elif action == 'edit_sub_tipo_caso':
+            sid = request.POST.get('sub_tipo_id')
+            st = get_object_or_404(SubTipoCaso, id=sid, tipo_caso__agencia=agencia)
+            st.nombre = request.POST.get('nombre', st.nombre).strip()
+            st.save()
+            messages.success(request, f'✅ Sub-tipo "{st.nombre}" actualizado.')
+        
+        elif action == 'delete_tipo_caso':
+            tid = request.POST.get('tipo_id')
+            get_object_or_404(TipoCaso, id=tid, agencia=agencia).delete()
+            messages.warning(request, '🗑️ Tipo de caso eliminado.')
+
+        elif action == 'delete_sub_tipo_caso':
+            sid = request.POST.get('sub_tipo_id')
+            get_object_or_404(SubTipoCaso, id=sid, tipo_caso__agencia=agencia).delete()
+            messages.warning(request, '🗑️ Sub-tipo eliminado.')
+
+        return redirect('global_settings')
+
+    # ─────────────────────────────────────────────────────────────────────────────
+    #  CONTEXT DATA
+    # ─────────────────────────────────────────────────────────────────────────────
+    checklists = Checklist.objects.filter(agencia=agencia).prefetch_related('items')
+    estados = CaseStatus.objects.filter(agencia=agencia).order_by('orden')
+    config_mensajes = ConfiguracionMensajes.get_config(agencia)
+    preparadores = UserProfile.objects.filter(agencia=agencia, tipo='MIEMBRO').select_related('user')
+    moldes_formularios = Formulario.objects.filter(agencia=agencia)
+    categorias_documentos = CategoriaDocumento.objects.filter(agencia=agencia)
+    tipos_casos = TipoCaso.objects.filter(agencia=agencia).prefetch_related('subtipos')
+    
+    context = {
+        'checklists': checklists,
+        'estados': estados,
+        'config_mensajes': config_mensajes,
+        'preparadores': preparadores,
+        'moldes_formularios': moldes_formularios,
+        'tipos_casos': tipos_casos,
+        'categorias_documentos': categorias_documentos,
+        
+        # Forms for modals
+        'checklist_form': ChecklistForm(),
+        'item_form': ChecklistItemForm(),
+        'status_form': CaseStatusForm(),
+        'config_form': ConfigMensajesForm(instance=config_mensajes),
+        'preparador_form': PreparadorForm(),
+        'formulario_form': FormularioForm(),
+        'categoria_form': CategoriaDocumentoForm(),
+        'tipo_caso_form': TipoCasoForm(),
+        'sub_tipo_caso_form': SubTipoCasoForm(agencia=agencia),
+    }
+    
+    return render(request, 'crm/global_settings.html', context)
+
+@login_required
+def form_settings(request, pk):
+    """View to manage a specific form's sections and questions."""
+    profile = request.user.profile
+    if profile.tipo != 'MIEMBRO':
+        return redirect('client_portal')
+    
+    from formularios.models import Formulario, Seccion, Pregunta, FormularioSeccion
+    from formularios.forms import SeccionForm, PreguntaForm, FormularioSeccionForm
+    
+    agencia = profile.agencia
+    formulario = get_object_or_404(Formulario, pk=pk, agencia=agencia)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'add_seccion':
+            form = SeccionForm(request.POST)
+            if form.is_valid():
+                seccion = form.save(commit=False)
+                seccion.agencia = agencia
+                seccion.save()
+                FormularioSeccion.objects.create(formulario=formulario, seccion=seccion, orden=0)
+                messages.success(request, f'✅ Sección "{seccion.nombre}" creada y asignada.')
+        
+        elif action == 'assign_seccion':
+            form = FormularioSeccionForm(request.POST, agencia=agencia)
+            if form.is_valid():
+                fs = form.save(commit=False)
+                fs.formulario = formulario
+                fs.save()
+                messages.success(request, '✅ Sección existente asignada.')
+        
+        elif action == 'edit_seccion':
+            sid = request.POST.get('seccion_id')
+            seccion = get_object_or_404(Seccion, id=sid, agencia=agencia)
+            form = SeccionForm(request.POST, instance=seccion)
+            if form.is_valid():
+                form.save()
+                messages.success(request, f'✅ Sección actualizada.')
+
+        elif action == 'add_pregunta':
+            sid = request.POST.get('seccion_id')
+            seccion = get_object_or_404(Seccion, id=sid, agencia=agencia)
+            form = PreguntaForm(request.POST)
+            if form.is_valid():
+                pregunta = form.save(commit=False)
+                pregunta.seccion = seccion
+                pregunta.save()
+                messages.success(request, '✅ Pregunta agregada a la sección.')
+        
+        elif action == 'edit_pregunta':
+            pid = request.POST.get('pregunta_id')
+            pregunta = get_object_or_404(Pregunta, id=pid, seccion__agencia=agencia)
+            form = PreguntaForm(request.POST, instance=pregunta)
+            if form.is_valid():
+                form.save()
+                messages.success(request, '✅ Pregunta actualizada.')
+
+        elif action == 'delete_pregunta':
+            pid = request.POST.get('pregunta_id')
+            pregunta = get_object_or_404(Pregunta, id=pid, seccion__agencia=agencia)
+            pregunta.delete()
+            messages.warning(request, '🗑️ Pregunta eliminada.')
+
+        elif action == 'delete_seccion':
+            fs_id = request.POST.get('fs_id')
+            fs = get_object_or_404(FormularioSeccion, id=fs_id, formulario=formulario)
+            seccion_nombre = fs.seccion.nombre
+            fs.delete()
+            messages.warning(request, f'🗑️ Sección "{seccion_nombre}" removida del formulario.')
+
+        return redirect('form_settings', pk=pk)
+
+    secciones_del_formulario = FormularioSeccion.objects.filter(formulario=formulario).select_related('seccion')
+    todas_las_secciones = Seccion.objects.filter(agencia=agencia)
+    
+    context = {
+        'formulario': formulario,
+        'secciones_del_formulario': secciones_del_formulario,
+        'todas_las_secciones': todas_las_secciones,
+        'seccion_form': SeccionForm(),
+        'assign_seccion_form': FormularioSeccionForm(agencia=agencia),
+        'pregunta_form': PreguntaForm(),
+    }
+    return render(request, 'crm/form_settings.html', context)
+
+
+================================================================================
+📁 ARCHIVO: crm/management/commands/consolidate.py
+📏 Tamaño: 14650 bytes
+================================================================================
+
+"""
+Django management command para consolidar todo el código del proyecto
+en archivos .txt organizados por aplicación + proyecto completo.
+Formato de salida: appname-feb142026-6pm.txt
+"""
+
+import os
+from pathlib import Path
+from datetime import datetime
+from django.core.management.base import BaseCommand
+from django.conf import settings
+
+# ============================================
+# CONFIGURACIÓN - EDITA ESTAS VARIABLES
+# ============================================
+# Ruta del proyecto Django (None = usar settings.BASE_DIR automáticamente)
+PROJECT_ROOT = '/Users/edwinciprian/Documents/visapower'
+
+# Carpeta de salida para los archivos consolidados (relativa al proyecto)
+OUTPUT_DIR = "/Users/edwinciprian/Documents/visapower/consolidate_code"
+# ============================================
+
+class Command(BaseCommand):
+    help = 'Consolida todo el código del proyecto Django en archivos .txt por aplicación + proyecto completo'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Determinar ruta del proyecto
+        self.project_root = Path(PROJECT_ROOT) if PROJECT_ROOT else Path(settings.BASE_DIR)
+        
+        # Crear directorio de salida
+        self.output_path = self.project_root / OUTPUT_DIR
+        self.output_path.mkdir(exist_ok=True, parents=True)
+        
+        # Extensiones a incluir
+        self.include_extensions = {
+            '.py', '.html', '.css', '.js', '.json', 
+            '.txt', '.md', '.yaml', '.yml', '.ini',
+            '.env', '.gitignore', '.xml', '.csv'
+        }
+        
+        # Patrones a excluir
+        self.exclude_patterns = {
+            '__pycache__', 'migrations', '.git', 'venv', 
+            'env', 'node_modules', '.venv', '.idea',
+            '*.pyc', '*.pyo', '*.pyd', '.DS_Store',
+            '*.sqlite3', '*.db', '*.log', 'db.sqlite3',
+            'media', 'staticfiles', 'collectstatic',
+            '*.jpg', '*.jpeg', '*.png', '*.gif', '*.svg',
+            '*.pdf', '*.zip', '*.tar', '*.gz', '*.exe',
+            '*.mp4', '*.mp3', '*.wav', '*.mov'
+        }
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--project',
+            type=str,
+            help='Ruta manual del proyecto (anula PROJECT_ROOT)',
+        )
+        parser.add_argument(
+            '--output',
+            type=str,
+            help='Ruta de salida personalizada (anula OUTPUT_DIR)',
+        )
+        parser.add_argument(
+            '--apps',
+            nargs='+',
+            help='Apps específicas a consolidar (por defecto: todas)',
+        )
+
+    def should_include_file(self, file_path):
+        """Verifica si el archivo debe incluirse"""
+        if file_path.suffix.lower() not in self.include_extensions:
+            return False
+        
+        for pattern in self.exclude_patterns:
+            if pattern.startswith('*.'):
+                ext = pattern[1:]
+                if file_path.match(f"*{ext}"):
+                    return False
+            elif pattern in str(file_path):
+                return False
+        return True
+
+    def should_exclude_dir(self, dir_path):
+        """Verifica si el directorio debe excluirse"""
+        dir_name = dir_path.name
+        return (dir_name in self.exclude_patterns or 
+                any(pattern in str(dir_path) for pattern in self.exclude_patterns))
+
+    def get_timestamp_suffix(self):
+        """Genera sufijo tipo: feb142026-6pm"""
+        now = datetime.now()
+        month_abbr = now.strftime('%b').lower()
+        day = now.day
+        year = now.year
+        hour = now.hour % 12 or 12
+        period = 'am' if now.hour < 12 else 'pm'
+        return f"{month_abbr}{day}{year}-{hour}{period}"
+
+    def get_django_apps(self):
+        """Obtiene apps Django del proyecto"""
+        apps = []
+        for app_config in settings.INSTALLED_APPS:
+            # Saltar apps de Django/frameworks
+            if app_config.startswith((
+                'django.', 'rest_framework', 'debug_toolbar',
+                'corsheaders', 'crispy_forms', 'allauth'
+            )):
+                continue
+            
+            # Buscar app en filesystem
+            app_path = self.project_root / app_config.replace('.', '/')
+            if app_path.exists() and app_path.is_dir():
+                apps.append({
+                    'name': app_config,
+                    'path': app_path,
+                    'short_name': app_config.split('.')[-1]
+                })
+            else:
+                # Buscar en subdirectorios
+                for root, dirs, _ in os.walk(self.project_root):
+                    potential_name = app_config.split('.')[-1]
+                    if potential_name in dirs:
+                        app_path = Path(root) / potential_name
+                        if (app_path / 'models.py').exists() or (app_path / 'apps.py').exists():
+                            apps.append({
+                                'name': app_config,
+                                'path': app_path,
+                                'short_name': potential_name
+                            })
+                        break
+        return apps
+
+    def consolidate_app(self, app_info, timestamp_suffix):
+        """Consolida una aplicación específica"""
+        app_name = app_info['name']
+        app_path = app_info['path']
+        short_name = app_info['short_name']
+        
+        # Nombre del archivo
+        output_filename = f"{short_name}-{timestamp_suffix}.txt"
+        output_file = self.output_path / output_filename
+        
+        file_count = 0
+        total_size = 0
+        
+        with open(output_file, 'w', encoding='utf-8') as outfile:
+            # Cabecera
+            outfile.write("=" * 80 + "\n")
+            outfile.write(f"CONSOLIDACIÓN DE CÓDIGO - APLICACIÓN: {app_name}\n")
+            outfile.write("=" * 80 + "\n")
+            outfile.write(f"Proyecto: {self.project_root.name}\n")
+            outfile.write(f"Ruta física: {app_path}\n")
+            outfile.write(f"Fecha consolidación: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            outfile.write("=" * 80 + "\n\n")
+            
+            # Recorrer app
+            for root, dirs, files in os.walk(app_path):
+                dirs[:] = [d for d in dirs if not self.should_exclude_dir(Path(root) / d)]
+                
+                for file in sorted(files):
+                    file_path = Path(root) / file
+                    
+                    if self.should_include_file(file_path):
+                        rel_path = file_path.relative_to(self.project_root)
+                        file_size = file_path.stat().st_size
+                        
+                        # Escribir info del archivo
+                        outfile.write("\n" + "=" * 80 + "\n")
+                        outfile.write(f"📁 ARCHIVO: {rel_path}\n")
+                        outfile.write(f"📏 Tamaño: {file_size} bytes\n")
+                        outfile.write("=" * 80 + "\n\n")
+                        
+                        try:
+                            with open(file_path, 'r', encoding='utf-8') as infile:
+                                content = infile.read()
+                                outfile.write(content)
+                                outfile.write("\n")
+                                file_count += 1
+                                total_size += file_size
+                        except Exception as e:
+                            outfile.write(f"❌ ERROR: {e}\n\n")
+            
+            # Resumen
+            outfile.write("\n" + "=" * 80 + "\n")
+            outfile.write("📊 RESUMEN DE APLICACIÓN\n")
+            outfile.write("=" * 80 + "\n")
+            outfile.write(f"Total archivos: {file_count}\n")
+            outfile.write(f"Tamaño total: {total_size} bytes ({total_size / 1024:.2f} KB)\n")
+            outfile.write("=" * 80 + "\n")
+        
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"✓ {short_name:20s} | {file_count:3d} archivos | {total_size / 1024:7.1f} KB → {output_filename}"
+            )
+        )
+        
+        return {
+            'filename': output_filename,
+            'file_count': file_count,
+            'total_size': total_size
+        }
+
+    def consolidate_project(self, timestamp_suffix, exclude_apps=None):
+        """Consolida proyecto completo (excluyendo apps ya procesadas)"""
+        if exclude_apps is None:
+            exclude_apps = []
+        
+        output_filename = f"project-{timestamp_suffix}.txt"
+        output_file = self.output_path / output_filename
+        
+        file_count = 0
+        total_size = 0
+        
+        with open(output_file, 'w', encoding='utf-8') as outfile:
+            # Cabecera
+            outfile.write("=" * 80 + "\n")
+            outfile.write(f"CONSOLIDACIÓN COMPLETA - PROYECTO DJANGO\n")
+            outfile.write("=" * 80 + "\n")
+            outfile.write(f"Proyecto: {self.project_root.name}\n")
+            outfile.write(f"Ruta: {self.project_root}\n")
+            outfile.write(f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            outfile.write(f"Apps excluidas (consolidadas por separado): {', '.join([a['short_name'] for a in exclude_apps]) or 'Ninguna'}\n")
+            outfile.write("=" * 80 + "\n\n")
+            
+            # Recorrer proyecto
+            for root, dirs, files in os.walk(self.project_root):
+                dirs[:] = [d for d in dirs if not self.should_exclude_dir(Path(root) / d)]
+                
+                # Saltar apps ya consolidadas
+                skip_dir = any(str(app['path']) in str(root) for app in exclude_apps)
+                if skip_dir:
+                    continue
+                
+                for file in sorted(files):
+                    file_path = Path(root) / file
+                    
+                    if self.should_include_file(file_path):
+                        rel_path = file_path.relative_to(self.project_root)
+                        file_size = file_path.stat().st_size
+                        
+                        outfile.write("\n" + "=" * 80 + "\n")
+                        outfile.write(f"📁 ARCHIVO: {rel_path}\n")
+                        outfile.write(f"📏 Tamaño: {file_size} bytes\n")
+                        outfile.write("=" * 80 + "\n\n")
+                        
+                        try:
+                            with open(file_path, 'r', encoding='utf-8') as infile:
+                                content = infile.read()
+                                outfile.write(content)
+                                outfile.write("\n")
+                                file_count += 1
+                                total_size += file_size
+                        except Exception as e:
+                            outfile.write(f"❌ ERROR: {e}\n\n")
+            
+            # Resumen
+            outfile.write("\n" + "=" * 80 + "\n")
+            outfile.write("📊 RESUMEN DEL PROYECTO\n")
+            outfile.write("=" * 80 + "\n")
+            outfile.write(f"Total archivos: {file_count}\n")
+            outfile.write(f"Tamaño total: {total_size} bytes ({total_size / 1024:.2f} KB)\n")
+            outfile.write("=" * 80 + "\n")
+        
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"✓ proyecto completo    | {file_count:3d} archivos | {total_size / 1024:7.1f} KB → {output_filename}"
+            )
+        )
+        
+        return {
+            'filename': output_filename,
+            'file_count': file_count,
+            'total_size': total_size
+        }
+
+    def handle(self, *args, **options):
+        # Sobreescribir rutas si se pasan como argumentos
+        if options['project']:
+            self.project_root = Path(options['project'])
+            self.stdout.write(self.style.WARNING(f"✓ Ruta proyecto: {self.project_root}"))
+        
+        if options['output']:
+            self.output_path = Path(options['output'])
+            self.output_path.mkdir(exist_ok=True, parents=True)
+            self.stdout.write(self.style.WARNING(f"✓ Carpeta salida: {self.output_path}"))
+        
+        # Obtener timestamp
+        timestamp_suffix = self.get_timestamp_suffix()
+        
+        self.stdout.write("\n" + "=" * 80)
+        self.stdout.write(self.style.MIGRATE_HEADING("🚀 CONSOLIDADOR DE CÓDIGO DJANGO"))
+        self.stdout.write("=" * 80)
+        self.stdout.write(f"📁 Proyecto:   {self.project_root}")
+        self.stdout.write(f"📤 Salida:     {self.output_path}")
+        self.stdout.write(f"⏱️  Timestamp:  {timestamp_suffix}")
+        self.stdout.write("=" * 80 + "\n")
+        
+        # Obtener apps
+        all_apps = self.get_django_apps()
+        selected_apps = all_apps
+        
+        if options['apps']:
+            selected_apps = [a for a in all_apps if a['short_name'] in options['apps']]
+            self.stdout.write(self.style.WARNING(f"🔍 Filtrando apps: {options['apps']}"))
+        
+        self.stdout.write(self.style.SUCCESS(f"📦 Encontradas {len(all_apps)} apps Django"))
+        if selected_apps:
+            self.stdout.write(self.style.SUCCESS(f"🎯 Seleccionadas {len(selected_apps)} apps para consolidar\n"))
+        else:
+            self.stdout.write(self.style.WARNING("⚠️  No se encontraron apps para consolidar\n"))
+            return
+        
+        # Consolidar apps
+        app_results = []
+        for app in selected_apps:
+            result = self.consolidate_app(app, timestamp_suffix)
+            app_results.append(result)
+        
+        self.stdout.write("")
+        
+        # Consolidar proyecto completo
+        project_result = self.consolidate_project(timestamp_suffix, exclude_apps=selected_apps)
+        
+        # Resumen final
+        self.stdout.write("\n" + "=" * 80)
+        self.stdout.write(self.style.SUCCESS("✅ RESUMEN FINAL"))
+        self.stdout.write("=" * 80)
+        self.stdout.write(f"📁 Carpeta de salida: {self.output_path.absolute()}")
+        self.stdout.write(f"📦 Apps consolidadas: {len(app_results)}")
+        
+        for result in app_results:
+            size_kb = result['total_size'] / 1024
+            self.stdout.write(f"   • {result['filename']} ({result['file_count']} archivos, {size_kb:.1f} KB)")
+        
+        proj_size_kb = project_result['total_size'] / 1024
+        self.stdout.write(f"   • {project_result['filename']} ({project_result['file_count']} archivos, {proj_size_kb:.1f} KB)")
+        
+        self.stdout.write("=" * 80)
+        self.stdout.write(self.style.SUCCESS("🎉 ¡Consolidación completada exitosamente!"))
+        self.stdout.write("=" * 80 + "\n")
+
+================================================================================
+📁 ARCHIVO: crm/management/commands/setup_demo.py
+📏 Tamaño: 10297 bytes
+================================================================================
+
+import os
+import shutil
+from django.core.management.base import BaseCommand
+from django.contrib.auth.models import User
+from crm.models import (
+    Agencia, UserProfile, CaseStatus, Caso, Actividad,
+    MensajeCliente, Documento, Derivado, Credencial,
+    TipoCaso, SubTipoCaso, CategoriaDocumento
+)
+from formularios.models import Formulario, Seccion, Pregunta, FormularioSeccion
+from django.utils import timezone
+from django.conf import settings
+
+class Command(BaseCommand):
+    help = 'Inicializa las cuentas demo con 5 casos, actividades, mensajes, derivados y credenciales (3 por caso).'
+
+    def handle(self, *args, **kwargs):
+        self.stdout.write("Configurando Demo de Alta Fidelidad (v3)...")
+
+        # 1. Crear Agencia Demo
+        agencia_demo, _ = Agencia.objects.get_or_create(
+            slug='demo-agency',
+            defaults={'nombre': 'Demo Agency - Visa Power', 'activo': True, 'plan': 'PRO'}
+        )
+
+        # 2. Usuarios Demo
+        u_agency, created = User.objects.get_or_create(username='agency')
+        if created:
+            u_agency.set_password('agency123456')
+            u_agency.first_name = "Agent"
+            u_agency.last_name = "Demo"
+            u_agency.is_staff = True
+            u_agency.save()
+        else:
+            u_agency.set_password('agency123456')
+            u_agency.save()
+
+        p_agency, _ = UserProfile.objects.get_or_create(user=u_agency, defaults={'agencia': agencia_demo, 'tipo': 'MIEMBRO', 'is_demo': True, 'es_admin_agencia': True})
+        p_agency.is_demo = True
+        p_agency.save()
+
+        u_client, created = User.objects.get_or_create(username='client')
+        if created:
+            u_client.set_password('pass123')
+            u_client.first_name = "Client"
+            u_client.last_name = "Tester"
+            u_client.save()
+
+        p_client, _ = UserProfile.objects.get_or_create(user=u_client, defaults={'agencia': agencia_demo, 'tipo': 'CLIENTE', 'is_demo': True})
+        p_client.is_demo = True
+        p_client.save()
+
+        # 3. Limpiar datos viejos de la agencia demo
+        Caso.objects.filter(agencia=agencia_demo).delete()
+        CaseStatus.objects.filter(agencia=agencia_demo).delete()
+        TipoCaso.objects.filter(agencia=agencia_demo).delete()  # SubTipos se borran en cascada
+        Formulario.objects.filter(agencia=agencia_demo).delete()  # Secciones/Preguntas se borran en cascada
+        Seccion.objects.filter(agencia=agencia_demo).delete()
+        CategoriaDocumento.objects.filter(agencia=agencia_demo).delete()
+
+        # 4. Configuración inicial de categorías de documentos
+        cat_cliente = CategoriaDocumento.objects.create(agencia=agencia_demo, nombre='Subido por Cliente')
+        cat_prep = CategoriaDocumento.objects.create(agencia=agencia_demo, nombre='Subido por Preparador')
+        cat_entrevista = CategoriaDocumento.objects.create(agencia=agencia_demo, nombre='Llevar a Entrevista')
+        cat_otros = CategoriaDocumento.objects.create(agencia=agencia_demo, nombre='Otros')
+
+        # 5. Estados del embudo
+        estados = [
+            CaseStatus.objects.create(agencia=agencia_demo, nombre='Evaluación Inicial', orden=1, color='#6c757d'),
+            CaseStatus.objects.create(agencia=agencia_demo, nombre='Recolección de Documentos', orden=2, color='#0d6efd'),
+            CaseStatus.objects.create(agencia=agencia_demo, nombre='Firma y Pago', orden=3, color='#6610f2'),
+            CaseStatus.objects.create(agencia=agencia_demo, nombre='Pendiente Aprobación USCIS', orden=4, color='#ffc107'),
+            CaseStatus.objects.create(agencia=agencia_demo, nombre='Aprobado / Entrevista', orden=5, color='#198754'),
+        ]
+
+        # 5. Tipos y Sub-tipos de Caso (propios de la agencia demo)
+        tipo_inmigrante = TipoCaso.objects.create(agencia=agencia_demo, nombre='Inmigrante')
+        sub_consular    = SubTipoCaso.objects.create(tipo_caso=tipo_inmigrante, nombre='Proceso Consular')
+        sub_ajuste      = SubTipoCaso.objects.create(tipo_caso=tipo_inmigrante, nombre='Ajuste de Estatus')
+
+        tipo_no_inmigrante = TipoCaso.objects.create(agencia=agencia_demo, nombre='No Inmigrante')
+        sub_turista     = SubTipoCaso.objects.create(tipo_caso=tipo_no_inmigrante, nombre='Visa Turista / Negocios')
+        sub_trabajo     = SubTipoCaso.objects.create(tipo_caso=tipo_no_inmigrante, nombre='Visa de Trabajo')
+
+        tipo_humanitario = TipoCaso.objects.create(agencia=agencia_demo, nombre='Humanitario')
+        sub_refugio     = SubTipoCaso.objects.create(tipo_caso=tipo_humanitario, nombre='Refugio / Asilo')
+
+        # 6. Configuración de los 5 casos demo
+        casos_info = [
+            ("Petición Residencia Familiar (Esposa)",  tipo_inmigrante,    sub_consular,   estados[3]),
+            ("Ajuste de Estatus - Inversionista",      tipo_inmigrante,    sub_ajuste,     estados[1]),
+            ("Visa Turista - Negocios",                tipo_no_inmigrante, sub_turista,    estados[2]),
+            ("Proceso Consular - Hijos",               tipo_inmigrante,    sub_consular,   estados[4]),
+            ("Caso de Prueba: Refugio",                tipo_humanitario,   sub_refugio,    estados[0]),
+        ]
+
+        dest_dir = os.path.join(settings.MEDIA_ROOT, 'expedientes', '2026', '04')
+        os.makedirs(dest_dir, exist_ok=True)
+        source_dir = '/Users/edwinciprian/Documents/visapower/static/crm/demofiles'
+        hoy = timezone.now().date()
+
+        for i, (titulo, tipo, sub, status) in enumerate(casos_info, 1):
+            caso = Caso.objects.create(
+                agencia=agencia_demo,
+                titulo=f"DEMO: {titulo}",
+                tipo=tipo,
+                sub_tipo=sub,
+                beneficiario_principal=u_client,
+                preparador=u_agency,
+                status_actual=status
+            )
+
+            # --- ACTIVIDADES ---
+            Actividad.objects.create(caso=caso, titulo='Verificar antecedentes', status='COMPLETADA', fecha_vencimiento=hoy)
+            Actividad.objects.create(caso=caso, titulo='Subir Formulario I-130 / DS-260', status='PENDIENTE', fecha_vencimiento=hoy + timezone.timedelta(days=i*2), prioridad_alta=True)
+
+            # --- FAMILIARES ---
+            if i % 2 == 0:
+                Derivado.objects.create(caso=caso, nombre=f"Hijo {i}", apellido="Tester", telefono="809-555-0000")
+
+            # --- CHAT ---
+            MensajeCliente.objects.create(caso=caso, remitente=u_client, contenido="Hola, ¿cómo va mi proceso?")
+
+            # --- CREDENCIALES (3 por caso) ---
+            Credencial.objects.create(caso=caso, sitio_web="Portal CEAC / NVC", usuario=f"user_ceac_{i}", password=f"pass_ceac_{i}_123")
+            Credencial.objects.create(caso=caso, sitio_web="USCIS Case Status", usuario=f"receipt_{i}_9988", password=f"secret_{i}_pass")
+            Credencial.objects.create(caso=caso, sitio_web="Servicio de Mensajería", usuario=f"client_vpower_{i}", password=f"pwr_{i}_vstrong")
+
+            # --- DOCUMENTOS ---
+            files_to_add = [
+                (f'passport_{"1" if i==1 else "1"}.png' if i==1 else f"passport{i if i<=5 else 1}.jpeg", "Pasaporte"),
+                (f'acta_nacimiento_{i}.jpg', "Acta de Nacimiento"),
+                (f'i-864_{i}.pdf', "Formulario I-864"),
+            ]
+
+            for filename, label in files_to_add:
+                src_path = os.path.join(source_dir, filename)
+                if not os.path.exists(src_path):
+                    if os.path.isdir(source_dir):
+                        all_files = os.listdir(source_dir)
+                        if all_files:
+                            src_path = os.path.join(source_dir, all_files[0])
+
+                if os.path.exists(src_path):
+                    rel_path = f'expedientes/2026/04/{i}_{filename}'
+                    full_dest = os.path.join(settings.MEDIA_ROOT, rel_path)
+                    os.makedirs(os.path.dirname(full_dest), exist_ok=True)
+                    shutil.copy(src_path, full_dest)
+                    Documento.objects.create(
+                        caso=caso, 
+                        archivo=rel_path, 
+                        categoria=cat_cliente, 
+                        nombre_documento=f"{label} (Demo)"
+                    )
+
+        # ── FORMULARIOS DE EJEMPLO ──────────────────────────────────────
+        f_i130 = Formulario.objects.create(
+            agencia=agencia_demo,
+            nombre='Cuestionario Inicial I-130',
+            descripcion='Recolecta información para el Peticionario y Beneficiario.',
+            activo=True
+        )
+
+        s1 = Seccion.objects.create(agencia=agencia_demo, nombre='Datos del Peticionario')
+        FormularioSeccion.objects.create(formulario=f_i130, seccion=s1, orden=1)
+        Pregunta.objects.create(formulario=f_i130, seccion=s1, texto_pregunta='Nombre Completo', tipo_dato='TEXTO', orden=1)
+        Pregunta.objects.create(formulario=f_i130, seccion=s1, texto_pregunta='Fecha de Nacimiento', tipo_dato='FECHA', orden=2)
+        Pregunta.objects.create(formulario=f_i130, seccion=s1, texto_pregunta='Estatus Legal', tipo_dato='SELECT', opciones='Ciudadano, Residente', orden=3)
+
+        s2 = Seccion.objects.create(agencia=agencia_demo, nombre='Datos del Beneficiario (Biometría)')
+        FormularioSeccion.objects.create(formulario=f_i130, seccion=s2, orden=2)
+        Pregunta.objects.create(formulario=f_i130, seccion=s2, texto_pregunta='Número de Pasaporte', tipo_dato='TEXTO', orden=1)
+        Pregunta.objects.create(formulario=f_i130, seccion=s2, texto_pregunta='País de Nacimiento', tipo_dato='PAIS', orden=2)
+
+        s3 = Seccion.objects.create(agencia=agencia_demo, nombre='Historial de Empleo', repetible=True)
+        FormularioSeccion.objects.create(formulario=f_i130, seccion=s3, orden=3)
+        Pregunta.objects.create(formulario=f_i130, seccion=s3, texto_pregunta='Nombre del Empleador', tipo_dato='TEXTO', orden=1)
+        Pregunta.objects.create(formulario=f_i130, seccion=s3, texto_pregunta='Cargo/Ocupación', tipo_dato='TEXTO', orden=2)
+
+        self.stdout.write(self.style.SUCCESS(
+            f'✅ Demo actualizada: 5 casos, 3 tipos, 5 sub-tipos, 15 credenciales, 10 actividades, 1 formulario con 3 secciones.'
+        ))
+
+
+================================================================================
+📊 RESUMEN DE APLICACIÓN
+================================================================================
+Total archivos: 13
+Tamaño total: 105964 bytes (103.48 KB)
+================================================================================
