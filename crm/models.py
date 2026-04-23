@@ -252,6 +252,11 @@ class Documento(models.Model):
         default=True,
         help_text="Si está activo, el cliente puede ver y descargar este documento desde su portal."
     )
+    # Si True, este documento se listará en una sección especial "Llevar a Entrevista" para el cliente
+    llevar_a_entrevista = models.BooleanField(
+        default=False,
+        help_text="Marcar si el cliente debe imprimir y llevar este documento a la entrevista."
+    )
     fecha_subida = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

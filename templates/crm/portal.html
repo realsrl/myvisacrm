@@ -186,6 +186,45 @@
     {% endif %}
   </div>
 
+  {# ── COL COMPLETA: LLEVAR A ENTREVISTA ────────────────────────── #}
+  {% if documentos_entrevista %}
+  <div class="col-12">
+    <div class="card border-0 shadow-sm rounded-4 border-start border-warning border-4 mb-4 bg-warning bg-opacity-10">
+      <div class="card-header bg-transparent border-0 pt-4 pb-2 px-4 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0 text-warning-emphasis"><i class="fa-solid fa-briefcase me-2"></i> Documentos para Llevar a Entrevista</h5>
+        <span class="badge bg-warning text-dark rounded-pill">{{ documentos_entrevista|length }}</span>
+      </div>
+      <div class="card-body px-4 pb-4">
+        <p class="small text-muted mb-3"><i class="fa-solid fa-circle-info me-1"></i> Por favor, imprime los siguientes documentos y llévalos contigo el día de tu entrevista.</p>
+        <div class="row g-3">
+          {% for doc in documentos_entrevista %}
+            <div class="col-md-6 col-lg-4 col-xl-3">
+              <div class="border border-warning rounded-4 p-3 bg-white h-100 d-flex align-items-center gap-3 hover-lift shadow-sm">
+                <div class="flex-shrink-0">
+                  {% with ext=doc.archivo.name|lower %}
+                    {% if ".pdf" in ext %}<i class="fa-solid fa-file-pdf text-danger fa-2x"></i>
+                    {% elif ".doc" in ext %}<i class="fa-solid fa-file-word text-primary fa-2x"></i>
+                    {% elif ".jpg" in ext or ".jpeg" in ext or ".png" in ext %}<i class="fa-solid fa-file-image text-warning fa-2x"></i>
+                    {% else %}<i class="fa-solid fa-file text-secondary fa-2x"></i>
+                    {% endif %}
+                  {% endwith %}
+                </div>
+                <div class="flex-grow-1 overflow-hidden">
+                  <h6 class="mb-0 fw-bold small text-truncate">{{ doc.nombre_documento }}</h6>
+                  <small class="text-muted" style="font-size:0.7rem;">{{ doc.fecha_subida|date:"d M, Y" }}</small>
+                </div>
+                <a href="{{ doc.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-warning p-1 rounded-circle flex-shrink-0" title="Descargar e Imprimir">
+                  <i class="fa-solid fa-download fa-xs p-1"></i>
+                </a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {# ── COL COMPLETA: DOCUMENTOS ────────────────────────────────────── #}
   <div class="col-12">
     <div class="card border-0 shadow-sm rounded-4">

@@ -579,9 +579,13 @@
               <label class="form-label fw-bold">Archivo</label>
               <input type="file" name="archivo" class="form-control form-control-sm" required>
             </div>
-            <div class="form-check mb-3">
+            <div class="form-check mb-2">
               <input class="form-check-input" type="checkbox" name="user_can_view" id="viewCheck" checked>
               <label class="form-check-label" for="viewCheck">Visible para el cliente</label>
+            </div>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" name="llevar_a_entrevista" id="entrevistaCheck">
+              <label class="form-check-label text-warning fw-bold" for="entrevistaCheck"><i class="fa-solid fa-briefcase me-1"></i> Llevar a Entrevista</label>
             </div>
             <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">Subir Archivo</button>
           </form>

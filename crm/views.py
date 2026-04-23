@@ -383,8 +383,10 @@ def client_portal(request):
                     return redirect(f"{request.path}?c={caso_actual.pk}")
 
     documentos_visibles = []
+    documentos_entrevista = []
     if caso_actual:
-        documentos_visibles = caso_actual.documentos.filter(user_can_view=True).order_by('-fecha_subida')
+        documentos_visibles = caso_actual.documentos.filter(user_can_view=True, llevar_a_entrevista=False).order_by('-fecha_subida')
+        documentos_entrevista = caso_actual.documentos.filter(user_can_view=True, llevar_a_entrevista=True).order_by('-fecha_subida')
         # Los mensajes siempre se cargan del caso destino (principal)
         mensajes_del_caso = caso_destino_mensajes.mensajes.all()
     else:
@@ -396,6 +398,7 @@ def client_portal(request):
         'doc_form': doc_form,
         'msg_form': msg_form,
         'documentos_visibles': documentos_visibles,
+        'documentos_entrevista': documentos_entrevista,
         'mensajes_del_caso': mensajes_del_caso,
         'mensajes_periodo': mensajes_periodo,
         'limite_mensajes': config.limite if config else 0,
@@ -532,6 +535,7 @@ def case_detail(request, pk):
                 if cat_id:
                     doc.categoria = get_object_or_404(CategoriaDocumento, id=cat_id, agencia=agencia)
                 doc.user_can_view = request.POST.get('user_can_view') == 'on'
+                doc.llevar_a_entrevista = request.POST.get('llevar_a_entrevista') == 'on'
                 doc.save()
                 messages.success(request, f'📄 Documento "{doc.nombre_documento}" subido correctamente.')
             else:
