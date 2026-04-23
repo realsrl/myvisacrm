@@ -45,9 +45,9 @@ class CredencialInline(admin.TabularInline):
 
 @admin.register(Caso)
 class CasoAdmin(admin.ModelAdmin):
-    list_display = ('id', 'titulo', 'beneficiario_principal', 'preparador', 'status_actual', 'esta_archivado', 'fecha_apertura')
+    list_display = ('id', 'titulo', 'beneficiario_principal', 'preparador', 'status_actual', 'caso_principal', 'esta_archivado', 'fecha_apertura')
     list_editable = ('status_actual', 'esta_archivado')
-    list_filter = ('esta_archivado', 'status_actual', 'chat_habilitado', 'tipo', 'sub_tipo', 'preparador')
+    list_filter = ('esta_archivado', 'status_actual', 'chat_habilitado', 'tipo', 'sub_tipo', 'preparador', 'caso_principal')
     search_fields = ('titulo', 'beneficiario_principal__username', 'beneficiario_principal__first_name', 'beneficiario_principal__last_name')
     inlines = [DerivadoInline, CredencialInline]
     date_hierarchy = 'fecha_apertura'

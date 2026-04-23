@@ -34,7 +34,12 @@
                 {% for c in casos %}
                 <li>
                     <a class="dropdown-item rounded-3 {% if c.id == caso_actual.id %}active bg-primary{% endif %}" href="?c={{ c.id }}">
-                        <div class="fw-bold text-truncate" style="max-width:250px;">{{ c.titulo }}</div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="fw-bold text-truncate me-2" style="max-width:250px;">{{ c.titulo }}</div>
+                            <span class="badge {% if c.id == caso_actual.id %}bg-light text-primary{% else %}{% if c.caso_principal %}bg-info text-dark{% else %}bg-primary{% endif %}{% endif %}" style="font-size: 0.6rem;">
+                                {% if c.caso_principal %}Familiar{% else %}Principal{% endif %}
+                            </span>
+                        </div>
                         <small class="{% if c.id == caso_actual.id %}text-white-50{% else %}text-muted{% endif %}">{{ c.status_actual.nombre }}</small>
                     </a>
                 </li>
@@ -115,9 +120,16 @@
     <div class="card h-100 border-0 shadow-sm rounded-4">
       <div class="card-header bg-white border-0 pt-4 pb-2 px-4 d-flex justify-content-between align-items-center">
         <h5 class="fw-bold mb-0"><i class="fa-regular fa-comment-dots text-primary me-2"></i> Mensajes al Preparador</h5>
-        <span class="badge {% if puede_enviar_mensaje %}bg-success{% else %}bg-danger{% endif %} rounded-pill">
-          {{ mensajes_periodo }}/{{ limite_mensajes }} {{ periodo_label }}
-        </span>
+        <div class="d-flex align-items-center gap-2">
+          {% if caso_actual.caso_principal %}
+            <span class="badge bg-light text-primary rounded-pill border small" style="font-size: 0.65rem;">
+                <i class="fa-solid fa-circle-info me-1"></i> Chat Centralizado
+            </span>
+          {% endif %}
+          <span class="badge {% if puede_enviar_mensaje %}bg-success{% else %}bg-danger{% endif %} rounded-pill">
+            {{ mensajes_periodo }}/{{ limite_mensajes }}
+          </span>
+        </div>
       </div>
       <div class="card-body px-4 pb-4">
         <div class="messages-thread mb-3" id="messages-thread" style="max-height:300px; overflow-y:auto;">

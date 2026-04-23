@@ -6,8 +6,10 @@ from django.contrib import messages
 from .models import (
     Caso, CaseStatus, Actividad, Documento, ActualizacionCliente,
     MensajeCliente, ConfiguracionMensajes, ConfiguracionDashboard, Credencial,
-    Checklist, CaseChecklist, CaseChecklistItem, TipoCaso, SubTipoCaso, CategoriaDocumento
+    Checklist, CaseChecklist, CaseChecklistItem, TipoCaso, SubTipoCaso, CategoriaDocumento,
+    Derivado, Agencia, UserProfile
 )
+from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm
 from .forms import DocumentoClienteForm, MensajeClienteForm, ActualizacionForm, NuevoCasoForm
 from formularios.models import Formulario, RespuestaFormulario
@@ -331,13 +333,12 @@ def client_portal(request):
     agencia = caso_actual.agencia if caso_actual else None
 
     config = ConfiguracionMensajes.get_config(agencia) if agencia else None
-    doc_form = DocumentoClienteForm()
-    msg_form = MensajeClienteForm()
-    mensajes_periodo = 0
-    puede_enviar_mensaje = False
+    # Identificar caso destino para mensajes (siempre el principal)
+    caso_destino_mensajes = caso_actual.caso_principal if caso_actual and caso_actual.caso_principal else caso_actual
 
     if caso_actual and config:
-        mensajes_periodo = MensajeCliente.mensajes_periodo_count(request.user, caso_actual)
+        # Los mensajes se cuentan contra el caso destino (el principal)
+        mensajes_periodo = MensajeCliente.mensajes_periodo_count(request.user, caso_destino_mensajes)
         puede_enviar_mensaje = mensajes_periodo < config.limite
 
     if request.method == 'POST' and caso_actual:
@@ -372,16 +373,18 @@ def client_portal(request):
                 msg_form = MensajeClienteForm(request.POST)
                 if msg_form.is_valid():
                     msg = msg_form.save(commit=False)
-                    msg.caso = caso_actual
+                    # El mensaje siempre se vincula al caso principal
+                    msg.caso = caso_destino_mensajes
                     msg.remitente = request.user
                     msg.save()
                     messages.success(request, '💬 Tu mensaje fue enviado al preparador.')
-                    return redirect('client_portal')
+                    return redirect(f"{request.path}?c={caso_actual.pk}")
 
     documentos_visibles = []
     if caso_actual:
         documentos_visibles = caso_actual.documentos.filter(user_can_view=True).order_by('-fecha_subida')
-        mensajes_del_caso = caso_actual.mensajes.all()
+        # Los mensajes siempre se cargan del caso destino (principal)
+        mensajes_del_caso = caso_destino_mensajes.mensajes.all()
     else:
         mensajes_del_caso = MensajeCliente.objects.none()
 
@@ -424,8 +427,10 @@ def case_detail(request, pk):
         if action == 'reply_message':
             contenido = request.POST.get('contenido', '').strip()
             if contenido:
+                # Si es un sub-caso, el mensaje de respuesta va al principal
+                caso_destino = caso.caso_principal if caso.caso_principal else caso
                 MensajeCliente.objects.create(
-                    caso=caso,
+                    caso=caso_destino,
                     remitente=request.user,
                     contenido=contenido,
                     leido=True,
@@ -517,14 +522,12 @@ def case_detail(request, pk):
             return redirect('case_detail', pk=pk)
 
         elif action == 'add_documento':
-            from .forms import DocumentoClienteForm
             doc_form = DocumentoClienteForm(request.POST, request.FILES)
             if doc_form.is_valid():
                 doc = doc_form.save(commit=False)
                 doc.caso = caso
                 cat_id = request.POST.get('categoria')
                 if cat_id:
-                    from .models import CategoriaDocumento
                     doc.categoria = get_object_or_404(CategoriaDocumento, id=cat_id, agencia=agencia)
                 doc.user_can_view = request.POST.get('user_can_view') == 'on'
                 doc.save()
@@ -578,7 +581,6 @@ def case_detail(request, pk):
             telefono = request.POST.get('telefono', '').strip()
             email = request.POST.get('email', '').strip()
             if nombre and apellido:
-                from .models import Derivado
                 Derivado.objects.create(
                     caso=caso,
                     nombre=nombre,
@@ -593,7 +595,6 @@ def case_detail(request, pk):
 
         elif action == 'edit_derivado':
             derivado_id = request.POST.get('derivado_id')
-            from .models import Derivado
             derivado = get_object_or_404(Derivado, pk=derivado_id, caso=caso)
             derivado.nombre = request.POST.get('nombre', '').strip()
             derivado.apellido = request.POST.get('apellido', '').strip()
@@ -605,20 +606,44 @@ def case_detail(request, pk):
 
         elif action == 'delete_derivado':
             derivado_id = request.POST.get('derivado_id')
-            from .models import Derivado
             derivado = get_object_or_404(Derivado, pk=derivado_id, caso=caso)
             nombre_del = derivado.nombre
             derivado.delete()
             messages.warning(request, f'🗑️ Familiar "{nombre_del}" eliminado del caso.')
             return redirect('case_detail', pk=pk)
 
-    # Marcar mensajes del cliente como leídos
-    caso.mensajes.filter(leido=False, remitente=caso.beneficiario_principal).update(leido=True)
+        elif action == 'create_derivado_case':
+            derivado_id = request.POST.get('derivado_id')
+            tipo_id = request.POST.get('tipo_id')
+            sub_tipo_id = request.POST.get('sub_tipo_id')
+            
+            derivado = get_object_or_404(Derivado, pk=derivado_id, caso=caso)
+            
+            # Verificar si ya tiene un caso
+            if Caso.objects.filter(derivado=derivado).exists():
+                messages.warning(request, f'Este familiar ya tiene un caso asignado.')
+                return redirect('case_detail', pk=pk)
+            
+            # Crear el nuevo caso
+            nuevo_caso = Caso.objects.create(
+                agencia=agencia,
+                titulo=f"{derivado.nombre} {derivado.apellido} - {derivado.caso.titulo}",
+                tipo_id=tipo_id,
+                sub_tipo_id=sub_tipo_id,
+                beneficiario_principal=caso.beneficiario_principal,
+                preparador=caso.preparador,
+                status_actual=caso.status_actual, # Podría empezar en el mismo estado o el primero de la agencia
+                caso_principal=caso,
+                derivado=derivado
+            )
+            messages.success(request, f'✅ Caso individual creado para {derivado.nombre}.')
+            return redirect('case_detail', pk=nuevo_caso.pk)
+
+    # Marcar mensajes del cliente como leídos (siempre en el principal)
+    caso_para_mensajes = caso.caso_principal if caso.caso_principal else caso
+    caso_para_mensajes.mensajes.filter(leido=False, remitente=caso.beneficiario_principal).update(leido=True)
 
     act_form = ActualizacionForm()
-
-    from .models import UserProfile, CategoriaDocumento
-    from django.contrib.auth.models import User
     team_user_ids = UserProfile.objects.filter(agencia=agencia, tipo='MIEMBRO').values_list('user_id', flat=True)
     preparadores = User.objects.filter(id__in=team_user_ids)
     estados = CaseStatus.objects.filter(agencia=agencia).order_by('orden')

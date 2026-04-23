@@ -126,6 +126,10 @@ class Caso(models.Model):
     preparador = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='casos_gestionados')
     status_actual = models.ForeignKey(CaseStatus, on_delete=models.PROTECT, related_name='casos')
     
+    # Soporte para Casos de Familiares (Sub-casos)
+    caso_principal = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='sub_casos')
+    derivado = models.ForeignKey('Derivado', on_delete=models.SET_NULL, null=True, blank=True, related_name='caso_especifico')
+
     # Fechas automáticas
     fecha_apertura = models.DateTimeField(auto_now_add=True)
     ultima_modificacion = models.DateTimeField(auto_now=True)

@@ -23,9 +23,15 @@
 {# ── HEADER ─────────────────────────────────────────────────────── #}
 <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
   <div>
-    <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary mb-2">
-      <i class="fa-solid fa-arrow-left me-1"></i> Volver
-    </a>
+    {% if caso.caso_principal %}
+      <a href="{% url 'case_detail' caso.caso_principal.pk %}" class="btn btn-sm btn-outline-primary mb-2">
+        <i class="fa-solid fa-house-user me-1"></i> Volver al Caso Principal
+      </a>
+    {% else %}
+      <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary mb-2">
+        <i class="fa-solid fa-arrow-left me-1"></i> Volver al Dashboard
+      </a>
+    {% endif %}
     <h2 class="fw-bold mb-1">
         {{ caso.titulo }}
         {% if esta_archivado %}
@@ -112,10 +118,17 @@
               </div>
               <div class="flex-grow-1">
                 <div class="fw-semibold">{{ f.nombre }} {{ f.apellido }}</div>
-                <div class="text-muted">{{ f.telefono|default:f.email|default:"Sin contacto" }}</div>
+                <div class="text-muted" style="font-size: 0.7rem;">{{ f.telefono|default:f.email|default:"Sin contacto" }}</div>
               </div>
               {% if not esta_archivado %}
               <div class="btn-group">
+                  {% with familiar_case=f.caso_especifico.first %}
+                    {% if familiar_case %}
+                      <a href="{% url 'case_detail' familiar_case.pk %}" class="btn btn-sm btn-link text-success p-1" title="Ver Caso Detallado"><i class="fa-solid fa-file-invoice"></i></a>
+                    {% else %}
+                      <button type="button" class="btn btn-sm btn-link text-info p-1" data-bs-toggle="modal" data-bs-target="#createFamiliarCaseModal{{ f.pk }}" title="Crear Caso Indivudual"><i class="fa-solid fa-folder-plus"></i></button>
+                    {% endif %}
+                  {% endwith %}
                   <button type="button" class="btn btn-sm btn-link text-primary p-1" data-bs-toggle="modal" data-bs-target="#editDerivadoModal{{ f.pk }}" title="Editar"><i class="fa-solid fa-pen"></i></button>
                   <form method="post" onsubmit="return confirm('¿Seguro de eliminar este familiar?');" class="d-inline m-0 p-0">
                     {% csrf_token %}
@@ -123,6 +136,45 @@
                     <input type="hidden" name="derivado_id" value="{{ f.pk }}">
                     <button type="submit" class="btn btn-sm btn-link text-danger p-1" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                   </form>
+              </div>
+
+              <!-- Modal Crear Caso para Familiar -->
+              <div class="modal fade" id="createFamiliarCaseModal{{ f.pk }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                  <div class="modal-content rounded-4 border-0 shadow">
+                    <div class="modal-header border-0 pb-0 pt-4 px-4">
+                      <h6 class="modal-title fw-bold">Crear Caso para {{ f.nombre }}</h6>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form method="post">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="create_derivado_case">
+                      <input type="hidden" name="derivado_id" value="{{ f.pk }}">
+                      <div class="modal-body px-4 py-3">
+                        <p class="small text-muted mb-3">Este caso estará vinculado a <strong>{{ caso.titulo }}</strong> y compartirá la misma cuenta de usuario.</p>
+                        <div class="mb-3">
+                          <label class="form-label small fw-bold">Tipo de Caso</label>
+                          <select name="tipo_id" class="form-select form-select-sm" required>
+                            {% for tc in tipos_choices %}
+                              <option value="{{ tc.id }}">{{ tc.nombre }}</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                        <div class="mb-3">
+                          <label class="form-label small fw-bold">Sub-Tipo</label>
+                          <select name="sub_tipo_id" class="form-select form-select-sm" required>
+                            {% for st in sub_tipos_choices %}
+                              <option value="{{ st.id }}">{{ st.nombre }}</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                      </div>
+                      <div class="modal-footer border-0 p-4 pt-0">
+                        <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold rounded-pill">Iniciar Caso Individual</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
               </div>
               
               <!-- Modal Edit Familiar -->
@@ -511,13 +563,19 @@
           {% endfor %}
         </div>
         {% if not esta_archivado %}
-        <form method="post" class="p-3 border-top">
-          {% csrf_token %}<input type="hidden" name="action" value="reply_message">
-          <div class="input-group">
-            <input type="text" name="contenido" class="form-control form-control-sm" placeholder="Enviar mensaje...">
-            <button class="btn btn-primary btn-sm"><i class="fa-solid fa-paper-plane fa-xs"></i></button>
-          </div>
-        </form>
+          {% if caso.caso_principal %}
+            <div class="p-3 text-center text-muted small border-top bg-light">
+              <i class="fa-solid fa-circle-info me-1"></i> El chat se maneja en el <a href="{% url 'case_detail' caso.caso_principal.pk %}" class="fw-bold">Caso Principal</a>.
+            </div>
+          {% else %}
+            <form method="post" class="p-3 border-top">
+              {% csrf_token %}<input type="hidden" name="action" value="reply_message">
+              <div class="input-group">
+                <input type="text" name="contenido" class="form-control form-control-sm" placeholder="Enviar mensaje...">
+                <button class="btn btn-primary btn-sm"><i class="fa-solid fa-paper-plane fa-xs"></i></button>
+              </div>
+            </form>
+          {% endif %}
         {% else %}
             <div class="p-3 text-center text-muted small border-top">Chat cerrado (Lectura)</div>
         {% endif %}
