@@ -13,9 +13,11 @@
 {% if messages %}
 <div class="mb-4">
   {% for message in messages %}
-    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow-sm border-0 rounded-3" role="alert">
-      {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
+  <div
+    class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow-sm border-0 rounded-3"
+    role="alert">
+    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
   {% endfor %}
 </div>
 {% endif %}
@@ -23,20 +25,15 @@
 {# ── HEADER ─────────────────────────────────────────────────────── #}
 <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
   <div>
-    {% if caso.caso_principal %}
-      <a href="{% url 'case_detail' caso.caso_principal.pk %}" class="btn btn-sm btn-outline-primary mb-2">
-        <i class="fa-solid fa-house-user me-1"></i> Volver al Caso Principal
-      </a>
-    {% else %}
-      <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary mb-2">
-        <i class="fa-solid fa-arrow-left me-1"></i> Volver al Dashboard
-      </a>
-    {% endif %}
+    <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary mb-2">
+      <i class="fa-solid fa-arrow-left me-1"></i> Volver
+    </a>
     <h2 class="fw-bold mb-1">
-        {{ caso.titulo }}
-        {% if esta_archivado %}
-            <span class="badge bg-secondary fs-6 rounded-pill ms-2"><i class="fa-solid fa-box-archive me-1"></i> ARCHIVADO</span>
-        {% endif %}
+      {{ caso.titulo }}
+      {% if esta_archivado %}
+      <span class="badge bg-secondary fs-6 rounded-pill ms-2"><i class="fa-solid fa-box-archive me-1"></i>
+        ARCHIVADO</span>
+      {% endif %}
     </h2>
     <p class="text-muted mb-0">
       <i class="fa-solid fa-user-circle me-1"></i>
@@ -47,20 +44,21 @@
   </div>
   <div class="d-flex gap-2 align-self-start mt-2">
     {% if not esta_archivado %}
-        <a href="{% url 'archive_case' caso.pk %}" class="btn btn-danger btn-sm rounded-pill px-3 shadow-sm">
-            <i class="fa-solid fa-box-archive me-1"></i> Archivar Caso
-        </a>
+    <a href="{% url 'archive_case' caso.pk %}" class="btn btn-danger btn-sm rounded-pill px-3 shadow-sm">
+      <i class="fa-solid fa-box-archive me-1"></i> Archivar Caso
+    </a>
     {% endif %}
     <span class="badge bg-primary fs-6 rounded-pill px-3 py-2 shadow-sm">
-        {{ caso.status_actual.nombre }}
+      {{ caso.status_actual.nombre }}
     </span>
   </div>
 </div>
 
 {% if esta_archivado %}
 <div class="alert alert-secondary border-0 shadow-sm rounded-4 mb-4">
-    <h6 class="fw-bold mb-1"><i class="fa-solid fa-circle-info me-2"></i> Caso Archivados (Lectura)</h6>
-    <p class="small mb-0 text-muted">Este caso ha sido archivado. No se pueden realizar cambios, agregar documentos ni enviar mensajes. Solo está disponible para consulta y descarga de archivos.</p>
+  <h6 class="fw-bold mb-1"><i class="fa-solid fa-circle-info me-2"></i> Caso Archivados (Lectura)</h6>
+  <p class="small mb-0 text-muted">Este caso ha sido archivado. No se pueden realizar cambios, agregar documentos ni
+    enviar mensajes. Solo está disponible para consulta y descarga de archivos.</p>
 </div>
 {% endif %}
 
@@ -76,7 +74,8 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h6 class="fw-bold text-uppercase text-muted small mb-0 letter-spacing">Información</h6>
           {% if not esta_archivado %}
-          <button class="btn btn-sm btn-light p-1 text-primary rounded-circle" data-bs-toggle="modal" data-bs-target="#editCaseModal" title="Editar Detalles">
+          <button class="btn btn-sm btn-light p-1 text-primary rounded-circle" data-bs-toggle="modal"
+            data-bs-target="#editCaseModal" title="Editar Detalles">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
           {% endif %}
@@ -91,16 +90,17 @@
           {% if not esta_archivado %}
           <form method="post">
             {% csrf_token %}<input type="hidden" name="action" value="toggle_chat">
-            <button type="submit" class="btn btn-sm {% if caso.chat_habilitado %}btn-outline-danger{% else %}btn-outline-success{% endif %} w-100 py-1">
+            <button type="submit"
+              class="btn btn-sm {% if caso.chat_habilitado %}btn-outline-danger{% else %}btn-outline-success{% endif %} w-100 py-1">
               {% if caso.chat_habilitado %}
-                <i class="fa-solid fa-comment-slash me-1"></i> Deshabilitar Chat
+              <i class="fa-solid fa-comment-slash me-1"></i> Deshabilitar Chat
               {% else %}
-                <i class="fa-solid fa-comments me-1"></i> Habilitar Chat
+              <i class="fa-solid fa-comments me-1"></i> Habilitar Chat
               {% endif %}
             </button>
           </form>
           {% else %}
-            <div class="alert alert-light border small text-muted text-center py-1 mb-0">Chat Deshabilitado</div>
+          <div class="alert alert-light border small text-muted text-center py-1 mb-0">Chat Deshabilitado</div>
           {% endif %}
         </div>
       </div>
@@ -111,117 +111,132 @@
       <div class="card-body p-3">
         <h6 class="fw-bold text-uppercase text-muted small mb-3">Familiares</h6>
         {% if derivados %}
-          {% for f in derivados %}
-            <div class="d-flex align-items-center mb-2 small">
-              <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white flex-shrink-0 me-2" style="width:30px;height:30px;font-size:.7rem;">
-                {{ f.nombre|first }}{{ f.apellido|first }}
-              </div>
-              <div class="flex-grow-1">
-                <div class="fw-semibold">{{ f.nombre }} {{ f.apellido }}</div>
-                <div class="text-muted" style="font-size: 0.7rem;">{{ f.telefono|default:f.email|default:"Sin contacto" }}</div>
-              </div>
-              {% if not esta_archivado %}
-              <div class="btn-group">
-                  {% with familiar_case=f.caso_especifico.first %}
-                    {% if familiar_case %}
-                      <a href="{% url 'case_detail' familiar_case.pk %}" class="btn btn-sm btn-link text-success p-1" title="Ver Caso Detallado"><i class="fa-solid fa-file-invoice"></i></a>
-                    {% else %}
-                      <button type="button" class="btn btn-sm btn-link text-info p-1" data-bs-toggle="modal" data-bs-target="#createFamiliarCaseModal{{ f.pk }}" title="Crear Caso Indivudual"><i class="fa-solid fa-folder-plus"></i></button>
-                    {% endif %}
-                  {% endwith %}
-                  <button type="button" class="btn btn-sm btn-link text-primary p-1" data-bs-toggle="modal" data-bs-target="#editDerivadoModal{{ f.pk }}" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                  <form method="post" onsubmit="return confirm('¿Seguro de eliminar este familiar?');" class="d-inline m-0 p-0">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="delete_derivado">
-                    <input type="hidden" name="derivado_id" value="{{ f.pk }}">
-                    <button type="submit" class="btn btn-sm btn-link text-danger p-1" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
-                  </form>
-              </div>
+        {% for f in derivados %}
+        <div class="d-flex align-items-center mb-2 small">
+          <div
+            class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white flex-shrink-0 me-2"
+            style="width:30px;height:30px;font-size:.7rem;">
+            {{ f.nombre|first }}{{ f.apellido|first }}
+          </div>
+          <div class="flex-grow-1">
+            <div class="fw-semibold">{{ f.nombre }} {{ f.apellido }}</div>
+            <div class="text-muted">{{ f.telefono|default:f.email|default:"Sin contacto" }}</div>
+          </div>
+          {% if not esta_archivado %}
+          <div class="btn-group">
+            {% if f.caso_especifico.first %}
+              <a href="{% url 'case_detail' f.caso_especifico.first.pk %}" class="btn btn-sm btn-link text-info p-1" title="Ver Caso del Familiar"><i class="fa-solid fa-eye"></i></a>
+            {% else %}
+              <button type="button" class="btn btn-sm btn-link text-success p-1" data-bs-toggle="modal"
+                data-bs-target="#createDerivadoCaseModal{{ f.pk }}" title="Crear Caso Individual"><i class="fa-solid fa-folder-plus"></i></button>
+            {% endif %}
+            <button type="button" class="btn btn-sm btn-link text-primary p-1" data-bs-toggle="modal"
+              data-bs-target="#editDerivadoModal{{ f.pk }}" title="Editar"><i class="fa-solid fa-pen"></i></button>
+            <form method="post" onsubmit="return confirm('¿Seguro de eliminar este familiar?');"
+              class="d-inline m-0 p-0">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_derivado">
+              <input type="hidden" name="derivado_id" value="{{ f.pk }}">
+              <button type="submit" class="btn btn-sm btn-link text-danger p-1" title="Eliminar"><i
+                  class="fa-solid fa-trash"></i></button>
+            </form>
+          </div>
 
-              <!-- Modal Crear Caso para Familiar -->
-              <div class="modal fade" id="createFamiliarCaseModal{{ f.pk }}" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                  <div class="modal-content rounded-4 border-0 shadow">
-                    <div class="modal-header border-0 pb-0 pt-4 px-4">
-                      <h6 class="modal-title fw-bold">Crear Caso para {{ f.nombre }}</h6>
-                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <form method="post">
-                      {% csrf_token %}
-                      <input type="hidden" name="action" value="create_derivado_case">
-                      <input type="hidden" name="derivado_id" value="{{ f.pk }}">
-                      <div class="modal-body px-4 py-3">
-                        <p class="small text-muted mb-3">Este caso estará vinculado a <strong>{{ caso.titulo }}</strong> y compartirá la misma cuenta de usuario.</p>
-                        <div class="mb-3">
-                          <label class="form-label small fw-bold">Tipo de Caso</label>
-                          <select name="tipo_id" class="form-select form-select-sm" required>
-                            {% for tc in tipos_choices %}
-                              <option value="{{ tc.id }}">{{ tc.nombre }}</option>
-                            {% endfor %}
-                          </select>
-                        </div>
-                        <div class="mb-3">
-                          <label class="form-label small fw-bold">Sub-Tipo</label>
-                          <select name="sub_tipo_id" class="form-select form-select-sm" required>
-                            {% for st in sub_tipos_choices %}
-                              <option value="{{ st.id }}">{{ st.nombre }}</option>
-                            {% endfor %}
-                          </select>
-                        </div>
-                      </div>
-                      <div class="modal-footer border-0 p-4 pt-0">
-                        <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold rounded-pill">Iniciar Caso Individual</button>
-                      </div>
-                    </form>
-                  </div>
+          {% if not f.caso_especifico.first %}
+          <!-- Modal Crear Caso Familiar -->
+          <div class="modal fade" id="createDerivadoCaseModal{{ f.pk }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-sm modal-dialog-centered">
+              <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-0 pb-0 pt-3 px-3">
+                  <h6 class="modal-title fw-bold">Crear Caso para {{ f.nombre }}</h6>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-              </div>
-              
-              <!-- Modal Edit Familiar -->
-              <div class="modal fade" id="editDerivadoModal{{ f.pk }}" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-sm modal-dialog-centered">
-                  <div class="modal-content rounded-4 border-0 shadow">
-                    <div class="modal-header border-0 pb-0 pt-3 px-3">
-                      <h6 class="modal-title fw-bold">Editar Familiar</h6>
-                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <form method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="create_derivado_case">
+                  <input type="hidden" name="derivado_id" value="{{ f.pk }}">
+                  <div class="modal-body px-3 py-2">
+                    <div class="mb-2">
+                      <label class="form-label small fw-bold mb-1">Tipo de Caso</label>
+                      <select name="tipo_id" class="form-select form-select-sm" required>
+                        {% for tc in tipos_choices %}
+                        <option value="{{ tc.id }}">{{ tc.nombre }}</option>
+                        {% endfor %}
+                      </select>
                     </div>
-                    <form method="post">
-                      {% csrf_token %}
-                      <input type="hidden" name="action" value="edit_derivado">
-                      <input type="hidden" name="derivado_id" value="{{ f.pk }}">
-                      <div class="modal-body px-3 py-2">
-                        <div class="mb-2"><input type="text" name="nombre" class="form-control form-control-sm" value="{{ f.nombre }}" placeholder="Nombre" required></div>
-                        <div class="mb-2"><input type="text" name="apellido" class="form-control form-control-sm" value="{{ f.apellido }}" placeholder="Apellido" required></div>
-                        <div class="mb-2"><input type="text" name="telefono" class="form-control form-control-sm" value="{{ f.telefono }}" placeholder="Teléfono"></div>
-                        <div class="mb-2"><input type="email" name="email" class="form-control form-control-sm" value="{{ f.email }}" placeholder="Email"></div>
-                      </div>
-                      <div class="modal-footer border-0 p-3 pt-0">
-                        <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Guardar Cambios</button>
-                      </div>
-                    </form>
+                    <div class="mb-2">
+                      <label class="form-label small fw-bold mb-1">Sub-Tipo</label>
+                      <select name="sub_tipo_id" class="form-select form-select-sm" required>
+                        {% for st in sub_tipos_choices %}
+                        <option value="{{ st.id }}">{{ st.nombre }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <p class="text-muted small mb-0 mt-2" style="font-size:0.7rem;">El preparador, cliente y credenciales se heredarán del caso principal.</p>
                   </div>
-                </div>
+                  <div class="modal-footer border-0 p-3 pt-0">
+                    <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">Crear Caso</button>
+                  </div>
+                </form>
               </div>
-              {% endif %}
             </div>
-          {% endfor %}
+          </div>
+          {% endif %}
+
+          <!-- Modal Edit Familiar -->
+          <div class="modal fade" id="editDerivadoModal{{ f.pk }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-sm modal-dialog-centered">
+              <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-0 pb-0 pt-3 px-3">
+                  <h6 class="modal-title fw-bold">Editar Familiar</h6>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="edit_derivado">
+                  <input type="hidden" name="derivado_id" value="{{ f.pk }}">
+                  <div class="modal-body px-3 py-2">
+                    <div class="mb-2"><input type="text" name="nombre" class="form-control form-control-sm"
+                        value="{{ f.nombre }}" placeholder="Nombre" required></div>
+                    <div class="mb-2"><input type="text" name="apellido" class="form-control form-control-sm"
+                        value="{{ f.apellido }}" placeholder="Apellido" required></div>
+                    <div class="mb-2"><input type="text" name="telefono" class="form-control form-control-sm"
+                        value="{{ f.telefono }}" placeholder="Teléfono"></div>
+                    <div class="mb-2"><input type="email" name="email" class="form-control form-control-sm"
+                        value="{{ f.email }}" placeholder="Email"></div>
+                  </div>
+                  <div class="modal-footer border-0 p-3 pt-0">
+                    <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Guardar Cambios</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
         {% else %}
-          <p class="text-muted small mb-0 p-2 text-center text-opacity-50">Sin familiares derivados.</p>
+        <p class="text-muted small mb-0 p-2 text-center text-opacity-50">Sin familiares derivados.</p>
         {% endif %}
 
         {% if not esta_archivado %}
         <hr class="my-2 opacity-10">
-        <button class="btn btn-sm btn-outline-secondary w-100 py-1" type="button" data-bs-toggle="collapse" data-bs-target="#addDerivadoForm">
+        <button class="btn btn-sm btn-outline-secondary w-100 py-1" type="button" data-bs-toggle="collapse"
+          data-bs-target="#addDerivadoForm">
           <i class="fa-solid fa-plus me-1"></i> Agregar Familiar
         </button>
         <div class="collapse mt-2" id="addDerivadoForm">
           <form method="post" class="small p-2 border rounded bg-light">
             {% csrf_token %}
             <input type="hidden" name="action" value="add_derivado">
-            <div class="mb-2"><input type="text" name="nombre" class="form-control form-control-sm" placeholder="Nombre" required></div>
-            <div class="mb-2"><input type="text" name="apellido" class="form-control form-control-sm" placeholder="Apellido" required></div>
-            <div class="mb-2"><input type="text" name="telefono" class="form-control form-control-sm" placeholder="Teléfono"></div>
-            <div class="mb-2"><input type="email" name="email" class="form-control form-control-sm" placeholder="Email"></div>
+            <div class="mb-2"><input type="text" name="nombre" class="form-control form-control-sm" placeholder="Nombre"
+                required></div>
+            <div class="mb-2"><input type="text" name="apellido" class="form-control form-control-sm"
+                placeholder="Apellido" required></div>
+            <div class="mb-2"><input type="text" name="telefono" class="form-control form-control-sm"
+                placeholder="Teléfono"></div>
+            <div class="mb-2"><input type="email" name="email" class="form-control form-control-sm" placeholder="Email">
+            </div>
             <button type="submit" class="btn btn-secondary btn-sm w-100 fw-bold">Guardar Familiar</button>
           </form>
         </div>
@@ -234,27 +249,30 @@
       <div class="card-body p-3">
         <h6 class="fw-bold text-warning small mb-3"><i class="fa-solid fa-vault me-1"></i> Bóveda de Credenciales</h6>
         {% if credenciales %}
-          {% for c in credenciales %}
-            <div class="mb-3 p-2 bg-light rounded small text-break position-relative border">
-              <strong class="text-primary">{{ c.sitio_web }}</strong><br>
-              <span class="text-muted">Usuario:</span> 
-              <span class="fw-semibold">{{ c.usuario }}</span>
-              <button class="btn btn-link btn-sm p-0 ms-1 copy-simple" data-clipboard="{{ c.usuario }}" title="Copiar Usuario"><i class="fa-regular fa-copy"></i></button>
-              <br>
-              <span class="text-muted">Password:</span> 
-              <span class="text-muted">••••••••</span>
-              <button class="btn btn-warning btn-sm p-0 px-1 ms-1 secure-copy" data-id="{{ c.pk }}" title="Ver y Copiar Password">
-                <i class="fa-solid fa-key" style="font-size: 0.7rem;"></i>
-              </button>
-            </div>
-          {% endfor %}
+        {% for c in credenciales %}
+        <div class="mb-3 p-2 bg-light rounded small text-break position-relative border">
+          <strong class="text-primary">{{ c.sitio_web }}</strong><br>
+          <span class="text-muted">Usuario:</span>
+          <span class="fw-semibold">{{ c.usuario }}</span>
+          <button class="btn btn-link btn-sm p-0 ms-1 copy-simple" data-clipboard="{{ c.usuario }}"
+            title="Copiar Usuario"><i class="fa-regular fa-copy"></i></button>
+          <br>
+          <span class="text-muted">Password:</span>
+          <span class="text-muted">••••••••</span>
+          <button class="btn btn-warning btn-sm p-0 px-1 ms-1 secure-copy" data-id="{{ c.pk }}"
+            title="Ver y Copiar Password">
+            <i class="fa-solid fa-key" style="font-size: 0.7rem;"></i>
+          </button>
+        </div>
+        {% endfor %}
         {% else %}
-          <p class="text-muted small mb-2">Sin credenciales registradas.</p>
+        <p class="text-muted small mb-2">Sin credenciales registradas.</p>
         {% endif %}
 
         {% if not esta_archivado %}
         <hr class="my-2 opacity-10">
-        <button class="btn btn-sm btn-outline-warning w-100 py-1" type="button" data-bs-toggle="collapse" data-bs-target="#addCredForm">
+        <button class="btn btn-sm btn-outline-warning w-100 py-1" type="button" data-bs-toggle="collapse"
+          data-bs-target="#addCredForm">
           <i class="fa-solid fa-plus me-1"></i> Agregar Credencial
         </button>
         <div class="collapse mt-2" id="addCredForm">
@@ -262,15 +280,18 @@
             {% csrf_token %}
             <input type="hidden" name="action" value="add_credencial">
             <div class="mb-2">
-              <input type="text" name="cred_sitio" class="form-control form-control-sm" placeholder="Sitio Web (ej: CEAC, USCIS)" required>
+              <input type="text" name="cred_sitio" class="form-control form-control-sm"
+                placeholder="Sitio Web (ej: CEAC, USCIS)" required>
             </div>
             <div class="mb-2">
-              <input type="text" name="cred_usuario" class="form-control form-control-sm" placeholder="Usuario" required>
+              <input type="text" name="cred_usuario" class="form-control form-control-sm" placeholder="Usuario"
+                required>
             </div>
             <div class="mb-2">
               <input type="text" name="cred_password" class="form-control form-control-sm" placeholder="Contraseña">
             </div>
-            <button type="submit" class="btn btn-warning btn-sm w-100 fw-bold"><i class="fa-solid fa-lock me-1"></i> Guardar en Bóveda</button>
+            <button type="submit" class="btn btn-warning btn-sm w-100 fw-bold"><i class="fa-solid fa-lock me-1"></i>
+              Guardar en Bóveda</button>
           </form>
         </div>
         {% endif %}
@@ -280,7 +301,7 @@
 
   {# ── COLUMNA CENTRAL: Actividades + Formularios ───────────────────── #}
   <div class="col-xl-5 col-lg-8">
-    
+
     {# Actividades #}
     <div class="card border-0 shadow-sm rounded-4 mb-4">
       <div class="card-header bg-white border-0 pt-3 pb-0 px-4 d-flex justify-content-between align-items-center">
@@ -289,42 +310,47 @@
       </div>
       <div class="card-body px-3 pb-3 pt-2">
         {% if actividades %}
-          <div class="d-flex flex-column gap-2">
-            {% for act in actividades %}
-            <div class="border rounded-3 p-3 bg-white task-row border-{{ act.semaforo_alerta }}">
-              <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
-                <div class="flex-grow-1">
-                  <div class="fw-semibold small">{{ act.titulo }}{% if act.prioridad_alta %}<i class="fa-solid fa-fire text-danger ms-1 fa-xs"></i>{% endif %}</div>
-                  {% if act.detalle %}<div class="text-muted" style="font-size:.75rem;">{{ act.detalle|truncatechars:80 }}</div>{% endif %}
-                </div>
-                {% if not esta_archivado %}
-                <form method="post" class="flex-shrink-0">
-                  {% csrf_token %}
-                  <input type="hidden" name="action" value="update_status">
-                  <input type="hidden" name="actividad_id" value="{{ act.pk }}">
-                  <div class="input-group input-group-sm" style="min-width:160px;">
-                    <select name="nuevo_status" class="form-select form-select-sm">
-                      {% for val, label in status_choices %}
-                        <option value="{{ val }}" {% if act.status == val %}selected{% endif %}>{{ label }}</option>
-                      {% endfor %}
-                    </select>
-                    <button type="submit" class="btn btn-sm btn-primary px-2"><i class="fa-solid fa-check fa-xs"></i></button>
-                  </div>
-                </form>
-                {% else %}
-                <span class="badge bg-light text-muted border">{{ act.get_status_display }}</span>
-                {% endif %}
+        <div class="d-flex flex-column gap-2">
+          {% for act in actividades %}
+          <div class="border rounded-3 p-3 bg-white task-row border-{{ act.semaforo_alerta }}">
+            <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+              <div class="flex-grow-1">
+                <div class="fw-semibold small">{{ act.titulo }}{% if act.prioridad_alta %}<i
+                    class="fa-solid fa-fire text-danger ms-1 fa-xs"></i>{% endif %}</div>
+                {% if act.detalle %}<div class="text-muted" style="font-size:.75rem;">{{ act.detalle|truncatechars:80 }}
+                </div>{% endif %}
               </div>
+              {% if not esta_archivado %}
+              <form method="post" class="flex-shrink-0">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_status">
+                <input type="hidden" name="actividad_id" value="{{ act.pk }}">
+                <div class="input-group input-group-sm" style="min-width:160px;">
+                  <select name="nuevo_status" class="form-select form-select-sm">
+                    {% for val, label in status_choices %}
+                    <option value="{{ val }}" {% if act.status == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                  <button type="submit" class="btn btn-sm btn-primary px-2"><i
+                      class="fa-solid fa-check fa-xs"></i></button>
+                </div>
+              </form>
+              {% else %}
+              <span class="badge bg-light text-muted border">{{ act.get_status_display }}</span>
+              {% endif %}
             </div>
-            {% endfor %}
           </div>
+          {% endfor %}
+        </div>
         {% else %}
-          <p class="text-muted small mb-0 p-2 text-center text-opacity-50"><i class="fa-solid fa-box-open me-2"></i>Sin tareas pendientes.</p>
+        <p class="text-muted small mb-0 p-2 text-center text-opacity-50"><i class="fa-solid fa-box-open me-2"></i>Sin
+          tareas pendientes.</p>
         {% endif %}
 
         {% if not esta_archivado %}
         <hr class="my-2 opacity-10">
-        <button class="btn btn-sm btn-outline-primary w-100 py-1" type="button" data-bs-toggle="collapse" data-bs-target="#addTareaForm">
+        <button class="btn btn-sm btn-outline-primary w-100 py-1" type="button" data-bs-toggle="collapse"
+          data-bs-target="#addTareaForm">
           <i class="fa-solid fa-plus me-1"></i> Agregar Tarea
         </button>
         <div class="collapse mt-2" id="addTareaForm">
@@ -333,7 +359,8 @@
             <input type="hidden" name="action" value="add_tarea">
             <div class="mb-2">
               <label class="form-label fw-bold">Título de la Tarea</label>
-              <input type="text" name="titulo_tarea" class="form-control form-control-sm" placeholder="Ej: Revisar pasaporte" required>
+              <input type="text" name="titulo_tarea" class="form-control form-control-sm"
+                placeholder="Ej: Revisar pasaporte" required>
             </div>
             <div class="mb-2">
               <label class="form-label fw-bold">Detalle (Opcional)</label>
@@ -363,7 +390,8 @@
     {# Formularios Dinámicos #}
     <div class="card border-0 shadow-sm rounded-4">
       <div class="card-header bg-white border-0 pt-3 pb-0 px-4 d-flex justify-content-between align-items-center">
-        <h6 class="fw-bold mb-0"><i class="fa-solid fa-file-signature text-warning me-2"></i> Cuestionarios Dinámicos</h6>
+        <h6 class="fw-bold mb-0"><i class="fa-solid fa-file-signature text-warning me-2"></i> Cuestionarios Dinámicos
+        </h6>
       </div>
       <div class="card-body px-4 pb-4">
         {% if not esta_archivado %}
@@ -374,7 +402,7 @@
             <select name="formulario_id" class="form-select" required>
               <option value="">-- Asignar Nuevo --</option>
               {% for f in formularios_disponibles %}
-                <option value="{{ f.pk }}">{{ f.nombre }}</option>
+              <option value="{{ f.pk }}">{{ f.nombre }}</option>
               {% endfor %}
             </select>
             <button type="submit" class="btn btn-warning btn-sm fw-bold px-3">Asignar</button>
@@ -383,19 +411,22 @@
         {% endif %}
 
         {% if respuestas_formularios %}
-          <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle">
-              <tbody class="small">
-                {% for resp in respuestas_formularios %}
-                  <tr>
-                    <td class="fw-semibold">{{ resp.formulario.nombre }}</td>
-                    <td><span class="badge {% if resp.estado == 'BORRADOR' %}bg-warning text-dark{% else %}bg-success{% endif %} rounded-pill">{{ resp.get_estado_display }}</span></td>
-                    <td class="text-end"><a href="{% url 'formulario_detalle' resp.id %}" class="btn btn-sm btn-outline-primary py-0">Leer</a></td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <tbody class="small">
+              {% for resp in respuestas_formularios %}
+              <tr>
+                <td class="fw-semibold">{{ resp.formulario.nombre }}</td>
+                <td><span
+                    class="badge {% if resp.estado == 'BORRADOR' %}bg-warning text-dark{% else %}bg-success{% endif %} rounded-pill">{{
+                    resp.get_estado_display }}</span></td>
+                <td class="text-end"><a href="{% url 'formulario_detalle' resp.id %}"
+                    class="btn btn-sm btn-outline-primary py-0">Leer</a></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
         {% endif %}
       </div>
     </div>
@@ -408,45 +439,50 @@
       <div class="card-body px-4 pb-4">
         {% if not esta_archivado %}
         <form method="post" class="mb-4">
-           {% csrf_token %}
-           <input type="hidden" name="action" value="assign_checklist">
-           <div class="input-group input-group-sm">
-             <select name="checklist_id" class="form-select" required>
-               <option value="">-- Asignar Checklist --</option>
-               {% for c in checklists_disponibles %}
-                 <option value="{{ c.pk }}">{{ c.nombre }}</option>
-               {% endfor %}
-             </select>
-             <button type="submit" class="btn btn-info text-white btn-sm fw-bold px-3">Asignar</button>
-           </div>
+          {% csrf_token %}
+          <input type="hidden" name="action" value="assign_checklist">
+          <div class="input-group input-group-sm">
+            <select name="checklist_id" class="form-select" required>
+              <option value="">-- Asignar Checklist --</option>
+              {% for c in checklists_disponibles %}
+              <option value="{{ c.pk }}">{{ c.nombre }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-info text-white btn-sm fw-bold px-3">Asignar</button>
+          </div>
         </form>
         {% endif %}
 
         {% if checklists_asignados %}
-          <div class="d-flex flex-column gap-3">
-             {% for ca in checklists_asignados %}
-               <div class="border rounded-3 p-3 bg-light">
-                 <h6 class="fw-bold small mb-3 text-primary">{{ ca.nombre }} <span class="text-muted fw-normal" style="font-size:0.7rem;">({{ ca.fecha_asignado|date:"d/m/Y" }})</span></h6>
-                 {% for item in ca.items.all %}
-                 <form method="post" class="d-flex align-items-center mb-2">
-                   {% csrf_token %}
-                   <input type="hidden" name="action" value="toggle_checklist_item">
-                   <input type="hidden" name="item_id" value="{{ item.pk }}">
-                   <div class="form-check small p-0 m-0 d-flex align-items-center">
-                     <input class="form-check-input ms-0 me-2" type="checkbox" id="chk_{{ item.pk }}" {% if item.completado %}checked{% endif %} onChange="this.form.submit()" {% if esta_archivado %}disabled{% endif %}>
-                     <label class="form-check-label {% if item.completado %}text-muted text-decoration-line-through{% else %}fw-semibold{% endif %}" for="chk_{{ item.pk }}" style="cursor:pointer;" onclick="if(!document.getElementById('chk_{{ item.pk }}').disabled) { document.getElementById('chk_{{ item.pk }}').click(); }">
-                       {{ item.texto }}
-                     </label>
-                   </div>
-                 </form>
-                 {% empty %}
-                   <p class="text-muted small mb-0">Sin ítems.</p>
-                 {% endfor %}
-               </div>
-             {% endfor %}
+        <div class="d-flex flex-column gap-3">
+          {% for ca in checklists_asignados %}
+          <div class="border rounded-3 p-3 bg-light">
+            <h6 class="fw-bold small mb-3 text-primary">{{ ca.nombre }} <span class="text-muted fw-normal"
+                style="font-size:0.7rem;">({{ ca.fecha_asignado|date:"d/m/Y" }})</span></h6>
+            {% for item in ca.items.all %}
+            <form method="post" class="d-flex align-items-center mb-2">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="toggle_checklist_item">
+              <input type="hidden" name="item_id" value="{{ item.pk }}">
+              <div class="form-check small p-0 m-0 d-flex align-items-center">
+                <input class="form-check-input ms-0 me-2" type="checkbox" id="chk_{{ item.pk }}" {% if item.completado %}checked{% endif %} onChange="this.form.submit()" {% if esta_archivado %}disabled{% endif %}>
+                <label
+                  class="form-check-label {% if item.completado %}text-muted text-decoration-line-through{% else %}fw-semibold{% endif %}"
+                  for="chk_{{ item.pk }}" style="cursor:pointer;"
+                  onclick="if(!document.getElementById('chk_{{ item.pk }}').disabled) { document.getElementById('chk_{{ item.pk }}').click(); }">
+                  {{ item.texto }}
+                </label>
+              </div>
+            </form>
+            {% empty %}
+            <p class="text-muted small mb-0">Sin ítems.</p>
+            {% endfor %}
           </div>
+          {% endfor %}
+        </div>
         {% else %}
-          <p class="text-muted small mb-0 p-2 text-center text-opacity-50"><i class="fa-solid fa-list-check me-2"></i>Sin checklists asignados.</p>
+        <p class="text-muted small mb-0 p-2 text-center text-opacity-50"><i class="fa-solid fa-list-check me-2"></i>Sin
+          checklists asignados.</p>
         {% endif %}
       </div>
     </div>
@@ -466,8 +502,10 @@
         <form method="post" class="mb-3">
           {% csrf_token %}<input type="hidden" name="action" value="add_actualizacion">
           <div class="input-group">
-            <textarea name="mensaje" rows="2" class="form-control form-control-sm" placeholder="Publicar progreso..."></textarea>
-            <button type="submit" class="btn btn-info btn-sm px-3"><i class="fa-solid fa-paper-plane text-white"></i></button>
+            <textarea name="mensaje" rows="2" class="form-control form-control-sm"
+              placeholder="Publicar progreso..."></textarea>
+            <button type="submit" class="btn btn-info btn-sm px-3"><i
+                class="fa-solid fa-paper-plane text-white"></i></button>
           </div>
         </form>
         {% endif %}
@@ -485,32 +523,34 @@
       </div>
       <div class="card-body px-3 pb-4">
         {% if documentos %}
-          <div class="d-flex flex-column gap-2" style="max-height:250px; overflow-y:auto;">
-            {% for doc in documentos %}
-              <div class="d-flex align-items-center p-2 rounded-3 hover-lift border bg-white small">
-                <div class="me-2">
-                    {% with ext=doc.archivo.name|lower %}
-                      {% if ".pdf" in ext %}<i class="fa-solid fa-file-pdf text-danger"></i>
-                      {% elif ".doc" in ext %}<i class="fa-solid fa-file-word text-primary"></i>
-                      {% elif ".jpg" in ext or ".png" in ext %}<i class="fa-solid fa-file-image text-warning"></i>
-                      {% else %}<i class="fa-solid fa-file text-secondary"></i>{% endif %}
-                    {% endwith %}
-                </div>
-                <div class="flex-grow-1 text-truncate pe-2">
-                  <div class="fw-bold text-truncate">{{ doc.nombre_documento }}</div>
-                  <div class="text-muted" style="font-size:0.65rem;">{{ doc.categoria.nombre|default:"Sin Categoría" }} · {{ doc.fecha_subida|date:"d/m/y" }}</div>
-                </div>
-                <a href="{{ doc.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-success p-1 rounded-circle"><i class="fa-solid fa-download fa-xs p-1"></i></a>
-              </div>
-            {% endfor %}
+        <div class="d-flex flex-column gap-2" style="max-height:250px; overflow-y:auto;">
+          {% for doc in documentos %}
+          <div class="d-flex align-items-center p-2 rounded-3 hover-lift border bg-white small">
+            <div class="me-2">
+              {% with ext=doc.archivo.name|lower %}
+              {% if ".pdf" in ext %}<i class="fa-solid fa-file-pdf text-danger"></i>
+              {% elif ".doc" in ext %}<i class="fa-solid fa-file-word text-primary"></i>
+              {% elif ".jpg" in ext or ".png" in ext %}<i class="fa-solid fa-file-image text-warning"></i>
+              {% else %}<i class="fa-solid fa-file text-secondary"></i>{% endif %}
+              {% endwith %}
+            </div>
+            <div class="flex-grow-1 text-truncate pe-2">
+              <div class="fw-bold text-truncate">{{ doc.nombre_documento }}</div>
+              <div class="text-muted" style="font-size:0.65rem;">{{ doc.categoria.nombre|default:"Sin Categoría" }} · {{ doc.fecha_subida|date:"d/m/y" }}</div>
+            </div>
+            <a href="{{ doc.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-success p-1 rounded-circle"><i
+                class="fa-solid fa-download fa-xs p-1"></i></a>
           </div>
+          {% endfor %}
+        </div>
         {% else %}
-          <p class="text-center text-muted small py-3">No hay archivos.</p>
+        <p class="text-center text-muted small py-3">No hay archivos.</p>
         {% endif %}
 
         {% if not esta_archivado %}
         <hr class="my-2 opacity-10">
-        <button class="btn btn-sm btn-outline-success w-100 py-1" type="button" data-bs-toggle="collapse" data-bs-target="#addDocForm">
+        <button class="btn btn-sm btn-outline-success w-100 py-1" type="button" data-bs-toggle="collapse"
+          data-bs-target="#addDocForm">
           <i class="fa-solid fa-plus me-1"></i> Subir Documento
         </button>
         <div class="collapse mt-2" id="addDocForm">
@@ -524,8 +564,9 @@
             <div class="mb-2">
               <label class="form-label fw-bold">Categoría</label>
               <select name="categoria" class="form-select form-select-sm">
+                <option value="">Seleccione Categoría</option>
                 {% for cat in categorias_documentos %}
-                    <option value="{{ cat.id }}">{{ cat.nombre }}</option>
+                <option value="{{ cat.id }}">{{ cat.nombre }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -549,35 +590,31 @@
       <div class="card-header bg-white border-0 pt-3 pb-2 px-4 d-flex justify-content-between align-items-center">
         <h6 class="fw-bold mb-0"><i class="fa-regular fa-comment-dots text-primary me-2"></i> Chat</h6>
         {% if not caso.chat_habilitado %}
-          <span class="badge bg-danger rounded-pill" style="font-size: 0.6rem;">Deshabilitado</span>
+        <span class="badge bg-danger rounded-pill" style="font-size: 0.6rem;">Deshabilitado</span>
         {% endif %}
       </div>
       <div class="card-body p-0">
         <div id="chat-thread" style="height:350px; overflow-y:auto;" class="bg-light p-3">
           {% for msg in mensajes %}
-            <div class="mb-3 d-flex {% if msg.remitente == request.user %}justify-content-end{% endif %}">
-              <div class="p-2 rounded-3 shadow-sm small {% if msg.remitente == request.user %}bg-primary text-white{% else %}bg-white text-dark{% endif %}" style="max-width:85%;">
-                {{ msg.contenido }}<br><small class="opacity-50" style="font-size:0.6rem;">{{ msg.fecha|date:"H:i" }}</small>
-              </div>
+          <div class="mb-3 d-flex {% if msg.remitente == request.user %}justify-content-end{% endif %}">
+            <div
+              class="p-2 rounded-3 shadow-sm small {% if msg.remitente == request.user %}bg-primary text-white{% else %}bg-white text-dark{% endif %}"
+              style="max-width:85%;">
+              {{ msg.contenido }}<br><small class="opacity-50" style="font-size:0.6rem;">{{ msg.fecha|date:"H:i" }}</small>
             </div>
+          </div>
           {% endfor %}
         </div>
         {% if not esta_archivado %}
-          {% if caso.caso_principal %}
-            <div class="p-3 text-center text-muted small border-top bg-light">
-              <i class="fa-solid fa-circle-info me-1"></i> El chat se maneja en el <a href="{% url 'case_detail' caso.caso_principal.pk %}" class="fw-bold">Caso Principal</a>.
-            </div>
-          {% else %}
-            <form method="post" class="p-3 border-top">
-              {% csrf_token %}<input type="hidden" name="action" value="reply_message">
-              <div class="input-group">
-                <input type="text" name="contenido" class="form-control form-control-sm" placeholder="Enviar mensaje...">
-                <button class="btn btn-primary btn-sm"><i class="fa-solid fa-paper-plane fa-xs"></i></button>
-              </div>
-            </form>
-          {% endif %}
+        <form method="post" class="p-3 border-top">
+          {% csrf_token %}<input type="hidden" name="action" value="reply_message">
+          <div class="input-group">
+            <input type="text" name="contenido" class="form-control form-control-sm" placeholder="Enviar mensaje...">
+            <button class="btn btn-primary btn-sm"><i class="fa-solid fa-paper-plane fa-xs"></i></button>
+          </div>
+        </form>
         {% else %}
-            <div class="p-3 text-center text-muted small border-top">Chat cerrado (Lectura)</div>
+        <div class="p-3 text-center text-muted small border-top">Chat cerrado (Lectura)</div>
         {% endif %}
       </div>
     </div>
@@ -591,7 +628,8 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow rounded-4">
       <div class="modal-header border-0 pb-0 pt-4 px-4">
-        <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen-to-square text-primary me-2"></i> Editar Detalles del Caso</h5>
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen-to-square text-primary me-2"></i> Editar Detalles del
+          Caso</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="post">
@@ -602,7 +640,8 @@
             <label class="form-label fw-bold small">Status del Caso</label>
             <select name="status_id" class="form-select">
               {% for st in estados %}
-                <option value="{{ st.id }}" {% if caso.status_actual.id == st.id %}selected{% endif %}>{{ st.nombre }}</option>
+              <option value="{{ st.id }}" {% if caso.status_actual.id == st.id %}selected{% endif %}>{{ st.nombre }}
+              </option>
               {% endfor %}
             </select>
           </div>
@@ -610,7 +649,7 @@
             <label class="form-label fw-bold small">Tipo de Visa</label>
             <select name="tipo_id" class="form-select">
               {% for tc in tipos_choices %}
-                <option value="{{ tc.id }}" {% if caso.tipo_id == tc.id %}selected{% endif %}>{{ tc.nombre }}</option>
+              <option value="{{ tc.id }}" {% if caso.tipo_id == tc.id %}selected{% endif %}>{{ tc.nombre }}</option>
               {% endfor %}
             </select>
           </div>
@@ -618,7 +657,7 @@
             <label class="form-label fw-bold small">Sub-Tipo</label>
             <select name="sub_tipo_id" class="form-select">
               {% for st in sub_tipos_choices %}
-                <option value="{{ st.id }}" {% if caso.sub_tipo_id == st.id %}selected{% endif %}>{{ st.nombre }}</option>
+              <option value="{{ st.id }}" {% if caso.sub_tipo_id == st.id %}selected{% endif %}>{{ st.nombre }}</option>
               {% endfor %}
             </select>
           </div>
@@ -626,7 +665,8 @@
             <label class="form-label fw-bold small">Preparador Asignado</label>
             <select name="preparador_id" class="form-select">
               {% for prep in preparadores %}
-                <option value="{{ prep.id }}" {% if caso.preparador.id == prep.id %}selected{% endif %}>{{ prep.get_full_name|default:prep.username }}</option>
+              <option value="{{ prep.id }}" {% if caso.preparador.id == prep.id %}selected{% endif %}>{{
+                prep.get_full_name|default:prep.username }}</option>
               {% endfor %}
             </select>
           </div>
@@ -650,7 +690,7 @@
 
   // Copia simple (Usuario)
   document.querySelectorAll('.copy-simple').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function () {
       navigator.clipboard.writeText(this.dataset.clipboard).then(() => {
         const icon = this.querySelector('i');
         icon.className = 'fa-solid fa-check text-success';
@@ -661,10 +701,10 @@
 
   // Copia segura (Password)
   document.querySelectorAll('.secure-copy').forEach(btn => {
-    btn.addEventListener('click', async function() {
+    btn.addEventListener('click', async function () {
       console.log('Botón de copia segura clicado, ID:', this.dataset.id);
       const credId = this.dataset.id;
-      
+
       const { value: password } = await Swal.fire({
         title: 'Verificación de Seguridad',
         text: 'Ingresa TU CONTRASEÑA de Preparador para ver esta credencial:',
@@ -713,13 +753,37 @@
   });
 </script>
 <style>
-  .task-row { border-left-width: 4px !important; }
-  .border-danger { border-left-color: #dc3545 !important; }
-  .border-warning { border-left-color: #ffc107 !important; }
-  .border-success { border-left-color: #198754 !important; }
-  .border-info { border-left-color: #0dcaf0 !important; }
-  #chat-thread::-webkit-scrollbar { width: 4px; }
-  #chat-thread::-webkit-scrollbar-thumb { background: #dee2e6; border-radius: 10px; }
-  .letter-spacing { letter-spacing: 0.05rem; }
+  .task-row {
+    border-left-width: 4px !important;
+  }
+
+  .border-danger {
+    border-left-color: #dc3545 !important;
+  }
+
+  .border-warning {
+    border-left-color: #ffc107 !important;
+  }
+
+  .border-success {
+    border-left-color: #198754 !important;
+  }
+
+  .border-info {
+    border-left-color: #0dcaf0 !important;
+  }
+
+  #chat-thread::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  #chat-thread::-webkit-scrollbar-thumb {
+    background: #dee2e6;
+    border-radius: 10px;
+  }
+
+  .letter-spacing {
+    letter-spacing: 0.05rem;
+  }
 </style>
 {% endblock %}

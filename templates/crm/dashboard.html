@@ -352,53 +352,7 @@
     </div>
   </div>
 
-  {# ── DOCUMENTOS RECIENTES ──────────────────────────────────────── #}
-  <div class="col-12 mt-4">
-    <div class="card border-0 shadow-sm rounded-4">
-      <div class="card-header bg-success bg-opacity-10 border-0 rounded-top-4 d-flex justify-content-between align-items-center py-3 px-4">
-        <h6 class="fw-bold text-success mb-0"><i class="fa-solid fa-file-invoice me-2"></i> Documentos Recientes en sus Casos</h6>
-        <span class="badge bg-success rounded-pill">{{ documentos_recientes|length }}</span>
-      </div>
-      <div class="card-body p-4">
-        {% if documentos_recientes %}
-          <div class="row g-3">
-            {% for doc in documentos_recientes %}
-              <div class="col-md-6 col-lg-4 col-xl-3">
-                <div class="border rounded-3 p-3 bg-white hover-lift">
-                  <div class="d-flex align-items-center mb-2">
-                    <div class="me-3">
-                        {% with ext=doc.archivo.name|lower %}
-                          {% if ".pdf" in ext %}<i class="fa-solid fa-file-pdf text-danger fa-xl"></i>
-                          {% elif ".doc" in ext %}<i class="fa-solid fa-file-word text-primary fa-xl"></i>
-                          {% elif ".jpg" in ext or ".jpeg" in ext or ".png" in ext %}<i class="fa-solid fa-file-image text-warning fa-xl"></i>
-                          {% else %}<i class="fa-solid fa-file text-secondary fa-xl"></i>
-                          {% endif %}
-                        {% endwith %}
-                    </div>
-                    <div class="flex-grow-1 overflow-hidden">
-                      <h6 class="mb-0 fw-bold small text-truncate">{{ doc.nombre_documento }}</h6>
-                      <a href="{% url 'case_detail' doc.caso.pk %}" class="text-muted small text-decoration-none d-block text-truncate">{{ doc.caso.titulo }}</a>
-                    </div>
-                  </div>
-                  <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
-                    <span class="text-muted" style="font-size:0.7rem;">{{ doc.fecha_subida|date:"d M, H:i" }}</span>
-                    <a href="{{ doc.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-success py-0 px-2 small">
-                        <i class="fa-solid fa-download fa-xs"></i>
-                    </a>
-                  </div>
-                </div>
-              </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="text-center py-4 text-muted">
-            <i class="fa-regular fa-folder-open fa-2x mb-2 opacity-50"></i>
-            <p class="small mb-0">Sin documentos recientes.</p>
-          </div>
-        {% endif %}
-      </div>
-    </div>
-  </div>
+
 
 </div>
 <style>
