@@ -418,10 +418,15 @@
               <tr>
                 <td class="fw-semibold">{{ resp.formulario.nombre }}</td>
                 <td><span
-                    class="badge {% if resp.estado == 'BORRADOR' %}bg-warning text-dark{% else %}bg-success{% endif %} rounded-pill">{{
-                    resp.get_estado_display }}</span></td>
-                <td class="text-end"><a href="{% url 'formulario_detalle' resp.id %}"
-                    class="btn btn-sm btn-outline-primary py-0">Leer</a></td>
+                    class="badge {% if resp.estado == 'BORRADOR' %}bg-warning text-dark{% else %}bg-success{% endif %} rounded-pill">{{ resp.get_estado_display }}</span></td>
+                <td class="text-end">
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 copy-form-link" data-url="{{ request.scheme }}://{{ request.get_host }}{% url 'formulario_detalle' resp.id %}" title="Copiar Enlace para el Cliente">
+                      <i class="fa-solid fa-link"></i>
+                    </button>
+                    <a href="{% url 'formulario_detalle' resp.id %}" class="btn btn-sm btn-outline-primary py-0">Leer</a>
+                  </div>
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -695,6 +700,25 @@
         const icon = this.querySelector('i');
         icon.className = 'fa-solid fa-check text-success';
         setTimeout(() => { icon.className = 'fa-regular fa-copy'; }, 1500);
+      });
+    });
+  });
+
+  // Copia de Enlace de Formulario
+  document.querySelectorAll('.copy-form-link').forEach(btn => {
+    btn.addEventListener('click', function () {
+      navigator.clipboard.writeText(this.dataset.url).then(() => {
+        const icon = this.querySelector('i');
+        icon.className = 'fa-solid fa-check text-success';
+        setTimeout(() => { icon.className = 'fa-solid fa-link'; }, 1500);
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: 'Enlace copiado',
+          showConfirmButton: false,
+          timer: 1500
+        });
       });
     });
   });
