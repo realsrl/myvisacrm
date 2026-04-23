@@ -340,6 +340,8 @@ def client_portal(request):
         # Los mensajes se cuentan contra el caso destino (el principal)
         mensajes_periodo = MensajeCliente.mensajes_periodo_count(request.user, caso_destino_mensajes)
         puede_enviar_mensaje = mensajes_periodo < config.limite
+    doc_form = DocumentoClienteForm()
+    msg_form = MensajeClienteForm()
 
     if request.method == 'POST' and caso_actual:
         action = request.POST.get('action')
