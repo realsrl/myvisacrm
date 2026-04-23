@@ -321,6 +321,38 @@
 </div>
 {% endif %}
 
+{# ── ELIMINACIÓN DE PERFIL ── #}
+<div class="mt-5 text-center">
+  {% if request.user.profile.solicita_eliminacion %}
+  <p class="text-warning small mb-0"><i class="fa-solid fa-clock me-1"></i> Solicitud de eliminación en proceso. Tu preparador confirmará la acción pronto.</p>
+  {% else %}
+  <button class="btn btn-sm btn-link text-muted small text-decoration-none opacity-50 hover-lift" data-bs-toggle="modal" data-bs-target="#deleteProfileModal">
+    Solicitar eliminación completa de mi perfil
+  </button>
+  {% endif %}
+</div>
+
+<!-- Modal Solicitar Eliminación -->
+<div class="modal fade" id="deleteProfileModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow rounded-4">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="request_deletion">
+        <div class="modal-body p-4 text-center">
+          <i class="fa-solid fa-triangle-exclamation fa-3x text-danger mb-3"></i>
+          <h5 class="fw-bold mb-3">¿Solicitar Eliminación?</h5>
+          <p class="small text-muted mb-4">Esta acción notificará a tu preparador para que elimine permanentemente todos tus datos, documentos, formularios e historial. ¿Estás seguro de continuar?</p>
+          <div class="d-flex gap-2 justify-content-center">
+            <button type="button" class="btn btn-light btn-sm px-3 fw-bold" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-danger btn-sm px-3 fw-bold">Sí, solicitar eliminación</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 {# ─── MODAL: SUBIR DOCUMENTO ──────────────────────────────────────── #}
 {% if caso_actual %}
 <div class="modal fade" id="modalDocumento" tabindex="-1" aria-labelledby="modalDocumentoLabel" aria-hidden="true">

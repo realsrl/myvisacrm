@@ -244,6 +244,56 @@
     </div>
   </div>
 
+  {# ── SOLICITUDES DE ELIMINACIÓN ─────────────────────────────────── #}
+  {% if clientes_eliminacion %}
+  <div class="col-12 mt-4">
+    <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm rounded-4 mb-3" role="alert">
+      <h6 class="fw-bold mb-1"><i class="fa-solid fa-triangle-exclamation me-2"></i> Atención Requerida: Solicitudes de Eliminación de Cuenta</h6>
+      <p class="small mb-0 text-danger">Tienes clientes que han solicitado la eliminación permanente de su perfil y datos.</p>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div class="card border-0 shadow-sm rounded-4 border-danger border-start border-4">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-4 small text-muted text-uppercase">Cliente</th>
+                <th class="small text-muted text-uppercase">Usuario</th>
+                <th class="text-end pe-4 small text-muted text-uppercase">Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for cliente in clientes_eliminacion %}
+              <tr>
+                <td class="ps-4 fw-semibold">{{ cliente.user.get_full_name|default:cliente.user.username }}</td>
+                <td class="text-muted small">{{ cliente.user.username }}</td>
+                <td class="text-end pe-4">
+                  <div class="d-flex justify-content-end gap-2">
+                    <form method="post" class="m-0" onsubmit="return confirm('¿Seguro que deseas RECHAZAR esta solicitud de eliminación?');">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="decline_deletion_dash">
+                      <input type="hidden" name="cliente_id" value="{{ cliente.id }}">
+                      <button type="submit" class="btn btn-sm btn-outline-secondary py-1 px-3 rounded-pill" title="Rechazar y mantener perfil">Declinar</button>
+                    </form>
+                    <form method="post" class="m-0" onsubmit="return confirm('ATENCIÓN: Esto eliminará permanentemente al cliente, sus casos, documentos y todo su historial. ¿Estás absolutamente seguro?');">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="approve_deletion_dash">
+                      <input type="hidden" name="cliente_id" value="{{ cliente.id }}">
+                      <button type="submit" class="btn btn-sm btn-danger py-1 px-3 rounded-pill" title="Aprobar y Eliminar Todo">Aprobar y Eliminar</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {# ── LISTA COMPLETA DE CASOS ────────────────────────────────────── #}
   <div class="col-12 mt-4">
     <div class="card border-0 shadow-sm rounded-4">

@@ -106,6 +106,25 @@ def dashboard(request):
                 )
                 messages.success(request, f'💬 Respuesta enviada en "{caso_obj.titulo}".')
             return redirect('dashboard')
+            
+        elif action == 'approve_deletion_dash':
+            cliente_id = request.POST.get('cliente_id')
+            if cliente_id:
+                cliente_profile = get_object_or_404(UserProfile, id=cliente_id, agencia=agencia)
+                nombre_cliente = cliente_profile.user.get_full_name() or cliente_profile.user.username
+                cliente_profile.user.delete()
+                messages.success(request, f'✅ Perfil del cliente "{nombre_cliente}" ha sido eliminado.')
+            return redirect('dashboard')
+            
+        elif action == 'decline_deletion_dash':
+            cliente_id = request.POST.get('cliente_id')
+            if cliente_id:
+                cliente_profile = get_object_or_404(UserProfile, id=cliente_id, agencia=agencia)
+                cliente_profile.solicita_eliminacion = False
+                cliente_profile.save()
+                nombre_cliente = cliente_profile.user.get_full_name() or cliente_profile.user.username
+                messages.info(request, f'🚫 Solicitud de eliminación para "{nombre_cliente}" fue rechazada.')
+            return redirect('dashboard')
 
     # Actividades próximas a vencer (por agencia)
     config_dash = ConfiguracionDashboard.get_config(agencia)
@@ -164,6 +183,9 @@ def dashboard(request):
     # Form for creating new cases
     nuevo_caso_form = NuevoCasoForm(agencia=agencia)
 
+    # Clientes solicitando eliminación
+    clientes_eliminacion = UserProfile.objects.filter(agencia=agencia, solicita_eliminacion=True).select_related('user')
+
     context = {
         'vencidas': vencidas,
         'tareas_hoy': tareas_hoy,
@@ -173,6 +195,7 @@ def dashboard(request):
         'documentos_recientes': documentos_recientes,
         'page_obj': page_obj,
         'agencia': agencia,
+        'clientes_eliminacion': clientes_eliminacion,
         'limites': limites,
         'casos_activos': casos_activos,
         'porcentaje_uso': porcentaje_uso,
@@ -343,44 +366,51 @@ def client_portal(request):
     doc_form = DocumentoClienteForm()
     msg_form = MensajeClienteForm()
 
-    if request.method == 'POST' and caso_actual:
+    if request.method == 'POST':
         action = request.POST.get('action')
+        
+        if action == 'request_deletion':
+            request.user.profile.solicita_eliminacion = True
+            request.user.profile.save()
+            messages.success(request, '✅ Solicitud enviada. Tu preparador ha sido notificado y procesará la eliminación pronto.')
+            return redirect('client_portal')
 
-        if action == 'upload_doc':
-            doc_form = DocumentoClienteForm(request.POST, request.FILES)
-            if doc_form.is_valid():
-                doc = doc_form.save(commit=False)
-                doc.caso = caso_actual
-                cat_cliente, _ = CategoriaDocumento.objects.get_or_create(
-                    agencia=agencia, 
-                    nombre='Subido por Cliente'
-                )
-                doc.categoria = cat_cliente
-                doc.user_can_view = True
-                doc.save()
-                messages.success(request, '✅ Tu documento fue enviado correctamente al preparador.')
-                return redirect('client_portal')
-            else:
-                messages.error(request, '⚠️ Hubo un error al subir el archivo. Verifica los datos.')
+        if caso_actual:
+            if action == 'upload_doc':
+                doc_form = DocumentoClienteForm(request.POST, request.FILES)
+                if doc_form.is_valid():
+                    doc = doc_form.save(commit=False)
+                    doc.caso = caso_actual
+                    cat_cliente, _ = CategoriaDocumento.objects.get_or_create(
+                        agencia=agencia, 
+                        nombre='Subido por Cliente'
+                    )
+                    doc.categoria = cat_cliente
+                    doc.user_can_view = True
+                    doc.save()
+                    messages.success(request, '✅ Tu documento fue enviado correctamente al preparador.')
+                    return redirect('client_portal')
+                else:
+                    messages.error(request, '⚠️ Hubo un error al subir el archivo. Verifica los datos.')
 
-        elif action == 'send_message':
-            if not puede_enviar_mensaje:
-                periodo_label = config.get_periodo_display().lower()
-                messages.error(
-                    request,
-                    f'⛔ Has alcanzado el límite de {config.limite} mensajes {periodo_label}. '
-                    'Intenta más tarde.'
-                )
-            else:
-                msg_form = MensajeClienteForm(request.POST)
-                if msg_form.is_valid():
-                    msg = msg_form.save(commit=False)
-                    # El mensaje siempre se vincula al caso principal
-                    msg.caso = caso_destino_mensajes
-                    msg.remitente = request.user
-                    msg.save()
-                    messages.success(request, '💬 Tu mensaje fue enviado al preparador.')
-                    return redirect(f"{request.path}?c={caso_actual.pk}")
+            elif action == 'send_message':
+                if not puede_enviar_mensaje:
+                    periodo_label = config.get_periodo_display().lower()
+                    messages.error(
+                        request,
+                        f'⛔ Has alcanzado el límite de {config.limite} mensajes {periodo_label}. '
+                        'Intenta más tarde.'
+                    )
+                else:
+                    msg_form = MensajeClienteForm(request.POST)
+                    if msg_form.is_valid():
+                        msg = msg_form.save(commit=False)
+                        # El mensaje siempre se vincula al caso principal
+                        msg.caso = caso_destino_mensajes
+                        msg.remitente = request.user
+                        msg.save()
+                        messages.success(request, '💬 Tu mensaje fue enviado al preparador.')
+                        return redirect(f"{request.path}?c={caso_actual.pk}")
 
     documentos_visibles = []
     documentos_entrevista = []
@@ -476,6 +506,22 @@ def case_detail(request, pk):
                 else:
                     messages.warning(request, 'Este formulario ya está asignado a este caso.')
             return redirect('case_detail', pk=pk)
+            
+        elif action == 'remove_formulario':
+            respuesta_id = request.POST.get('respuesta_id')
+            if respuesta_id:
+                respuesta = get_object_or_404(RespuestaFormulario, pk=respuesta_id, caso=caso)
+                nombre = respuesta.formulario.nombre
+                respuesta.delete()
+                messages.success(request, f'🗑️ Formulario "{nombre}" eliminado del caso.')
+            return redirect('case_detail', pk=pk)
+            
+        elif action == 'approve_deletion':
+            cliente_user = caso.beneficiario_principal
+            nombre_cliente = cliente_user.get_full_name() or cliente_user.username
+            cliente_user.delete() # This cascades to Profile, Casos, etc.
+            messages.success(request, f'✅ Perfil del cliente "{nombre_cliente}" y todos sus datos han sido eliminados de forma permanente.')
+            return redirect('dashboard')
             
         elif action == 'assign_checklist':
             checklist_id = request.POST.get('checklist_id')

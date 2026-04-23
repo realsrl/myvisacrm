@@ -77,6 +77,7 @@ class UserProfile(models.Model):
     tipo = models.CharField(max_length=15, choices=TIPO_CHOICES, default='MIEMBRO')
     is_demo = models.BooleanField(default=False)
     es_admin_agencia = models.BooleanField(default=False, help_text="Si es True, puede editar configuraciones de la agencia.")
+    solicita_eliminacion = models.BooleanField(default=False, help_text="Si el cliente ha solicitado eliminar su cuenta y datos por completo.")
 
     def __str__(self):
         return f"{self.user.username} - {self.agencia.nombre}"

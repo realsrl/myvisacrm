@@ -62,6 +62,20 @@
 </div>
 {% endif %}
 
+{% if caso.beneficiario_principal.profile.solicita_eliminacion %}
+<div class="alert alert-danger border-0 shadow-sm rounded-4 mb-4 d-flex justify-content-between align-items-center">
+  <div>
+    <h6 class="fw-bold mb-1"><i class="fa-solid fa-triangle-exclamation me-2"></i> Solicitud de Eliminación Permanente</h6>
+    <p class="small mb-0 text-danger">El cliente ha solicitado la eliminación completa de su perfil y todos sus datos asociados. Esta acción es irreversible.</p>
+  </div>
+  <form method="post" onsubmit="return confirm('ATENCIÓN: Esto eliminará permanentemente al usuario, sus casos, documentos y todo su historial. ¿Estás absolutamente seguro?');">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="approve_deletion">
+    <button type="submit" class="btn btn-danger fw-bold shadow-sm">Aprobar y Eliminar Todo</button>
+  </form>
+</div>
+{% endif %}
+
 {# ── MAIN GRID ── #}
 <div class="row g-4">
 
@@ -420,11 +434,17 @@
                 <td><span
                     class="badge {% if resp.estado == 'BORRADOR' %}bg-warning text-dark{% else %}bg-success{% endif %} rounded-pill">{{ resp.get_estado_display }}</span></td>
                 <td class="text-end">
-                  <div class="btn-group">
+                  <div class="btn-group d-flex align-items-center">
                     <button type="button" class="btn btn-sm btn-outline-secondary py-0 copy-form-link" data-url="{{ request.scheme }}://{{ request.get_host }}{% url 'formulario_detalle' resp.id %}" title="Copiar Enlace para el Cliente">
                       <i class="fa-solid fa-link"></i>
                     </button>
                     <a href="{% url 'formulario_detalle' resp.id %}" class="btn btn-sm btn-outline-primary py-0">Leer</a>
+                    <form method="post" class="d-inline m-0 p-0" onsubmit="return confirm('¿Seguro que deseas eliminar este formulario? Se perderán las respuestas.');">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="remove_formulario">
+                      <input type="hidden" name="respuesta_id" value="{{ resp.id }}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger py-0 border-start-0 rounded-start-0" title="Eliminar Formulario"><i class="fa-solid fa-trash"></i></button>
+                    </form>
                   </div>
                 </td>
               </tr>
