@@ -81,7 +81,7 @@
                         <span data-en>MyVisaCRM helps you organize cases, reduce repetitive client calls, and keep clients informed at every stage of their process.</span>
                     </p>
                     <div class="d-flex flex-wrap gap-4 justify-content-center mb-5 mb-lg-0">
-                        <button type="button" class="btn btn-primary-custom btn-lg px-5 py-3 fs-5" data-bs-toggle="modal" data-bs-target="#loginModal">
+                        <button type="button" class="btn btn-primary-custom btn-lg px-5 py-3 fs-5" data-bs-toggle="modal" data-bs-target="#trialModal">
                             <span data-es>Quiero Probar</span><span data-en>Try it Out</span>
                         </button>
                         <a href="https://wa.me/13476715112" class="btn btn-glass btn-lg px-4 py-3 border shadow-sm fs-5">
@@ -118,7 +118,7 @@
                     <strong class="text-warning">agency123456</strong>
                 </div>
             </div>
-            <button type="button" class="btn btn-primary-custom btn-sm mt-3 fw-bold px-4 shadow" data-bs-toggle="modal" data-bs-target="#loginModal">
+            <button type="button" class="btn btn-primary-custom btn-sm mt-3 fw-bold px-4 shadow" data-bs-toggle="modal" data-bs-target="#trialModal">
                 <span data-es>Ingresar al Demo</span><span data-en>Enter Demo</span>
             </button>
         </div>
@@ -245,12 +245,45 @@
                 </div>
                 <div class="modal-body p-4 bg-light">
                     <p class="text-center text-muted small mb-4">
-                        <span data-es><strong>Usuario de prueba:</strong> agency &nbsp;|&nbsp; <strong>Pass:</strong> agency123456<br><br>ó<br><br>ingresa tu usuario y contraseña para ir a tu cuenta.</span>
-                        <span data-en><strong>Test user:</strong> agency &nbsp;|&nbsp; <strong>Pass:</strong> agency123456<br><br>or<br><br>enter your username and password to access your account.</span>
+                        <span data-es>Ingresa tu usuario y contraseña para ir a tu cuenta.</span>
+                        <span data-en>Enter your username and password to access your account.</span>
                     </p>
                     <form method="post" action="">
                         {% csrf_token %}
                         {{ form|crispy }}
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-primary-custom py-3">
+                                <span data-es>Iniciar Sesión</span><span data-en>Login</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TRIAL MODAL -->
+    <div class="modal fade" id="trialModal" tabindex="-1" aria-labelledby="trialModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+                <div class="bg-dark text-white p-4 text-center">
+                    <h3 class="fw-bold mb-0 text-warning"><span data-es>Prueba MyVisaCRM</span><span data-en>Try MyVisaCRM</span></h3>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <p class="text-center text-muted small mb-4">
+                        <span data-es><strong>Usuario de prueba:</strong> agency &nbsp;|&nbsp; <strong>Pass:</strong> agency123456<br><br>Haz clic abajo para entrar automáticamente con las credenciales de demo.</span>
+                        <span data-en><strong>Test user:</strong> agency &nbsp;|&nbsp; <strong>Pass:</strong> agency123456<br><br>Click below to enter automatically with the demo credentials.</span>
+                    </p>
+                    <form method="post" action="">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="id_username_trial" class="form-label requiredField">Usuario / Username</label>
+                            <input type="text" name="username" value="agency" class="textinput form-control" id="id_username_trial" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_password_trial" class="form-label requiredField">Contraseña / Password</label>
+                            <input type="password" name="password" value="agency123456" class="textinput form-control" id="id_password_trial" readonly>
+                        </div>
                         <div class="d-grid mt-4">
                             <button type="submit" class="btn btn-primary-custom py-3">
                                 <span data-es>¡Siiii, quiero probar!</span><span data-en>Yes, I want to try it!</span>
@@ -276,20 +309,13 @@
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         var loginModalEl = document.getElementById('loginModal');
+        var trialModalEl = document.getElementById('trialModal');
+        
         if (loginModalEl) {
-            var bsModal = new bootstrap.Modal(loginModalEl);
-            
-            // Auto-fill demo if empty
-            loginModalEl.addEventListener('show.bs.modal', function () {
-                var userInput = document.getElementById('id_username');
-                var passInput = document.getElementById('id_password');
-                if (userInput && !userInput.value) userInput.value = 'agency';
-                if (passInput && !passInput.value) passInput.value = 'agency123456';
-            });
-
-            // If there are errors, open modal immediately
+            var bsLoginModal = new bootstrap.Modal(loginModalEl);
+            // If there are errors in the main login form, open it
             {% if form.errors %}
-                bsModal.show();
+                bsLoginModal.show();
             {% endif %}
         }
     });
