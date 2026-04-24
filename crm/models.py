@@ -112,6 +112,14 @@ class SubTipoCaso(models.Model):
     def __str__(self):
         return f"{self.nombre} - {self.tipo_caso.nombre}"
 
+class PlantillaInstruccion(models.Model):
+    agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='plantillas_instrucciones')
+    nombre = models.CharField(max_length=100, help_text="Nombre descriptivo de la plantilla")
+    contenido = models.TextField(help_text="Contenido de las instrucciones")
+
+    def __str__(self):
+        return f"{self.nombre} ({self.agencia.nombre})"
+
 class Caso(models.Model):
     agencia = models.ForeignKey(Agencia, on_delete=models.CASCADE, related_name='casos', null=True)
     titulo = models.CharField(max_length=200, help_text="Ej: Juan Perez - Residencia")
@@ -130,7 +138,7 @@ class Caso(models.Model):
     # Soporte para Casos de Familiares (Sub-casos)
     caso_principal = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='sub_casos')
     derivado = models.ForeignKey('Derivado', on_delete=models.SET_NULL, null=True, blank=True, related_name='caso_especifico')
-
+    
     # Fechas automáticas
     fecha_apertura = models.DateTimeField(auto_now_add=True)
     ultima_modificacion = models.DateTimeField(auto_now=True)
@@ -140,6 +148,8 @@ class Caso(models.Model):
         default=False, 
         help_text="Los casos archivados no cuentan para el límite del plan, pero no se pueden editar ni reabrir."
     )
+
+    instrucciones_especiales = models.TextField(blank=True, null=True, help_text="Instrucciones paso a paso para el cliente")
 
     def __str__(self):
         return f"{self.titulo} - {self.status_actual.nombre}"
@@ -164,6 +174,22 @@ class Caso(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+class InstruccionCaso(models.Model):
+    """Instrucciones específicas para un caso, manejadas de forma individual."""
+    caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name='instrucciones_lista')
+    titulo = models.CharField(max_length=255)
+    descripcion = models.TextField(blank=True, null=True)
+    orden = models.PositiveIntegerField(default=0)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['orden', 'fecha_creacion']
+        verbose_name = "Instrucción de Caso"
+        verbose_name_plural = "Instrucciones de Casos"
+
+    def __str__(self):
+        return f"{self.titulo} - {self.caso.titulo}"
 
 class Derivado(models.Model):
     """Familiares incluidos en el mismo caso (hijos, cónyuge)"""

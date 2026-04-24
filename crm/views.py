@@ -7,7 +7,7 @@ from .models import (
     Caso, CaseStatus, Actividad, Documento, ActualizacionCliente,
     MensajeCliente, ConfiguracionMensajes, ConfiguracionDashboard, Credencial,
     Checklist, CaseChecklist, CaseChecklistItem, TipoCaso, SubTipoCaso, CategoriaDocumento,
-    Derivado, Agencia, UserProfile
+    Derivado, Agencia, UserProfile, PlantillaInstruccion, InstruccionCaso
 )
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm
@@ -48,7 +48,11 @@ def dashboard(request):
             form = AuthenticationForm(request, data=request.POST)
             if form.is_valid():
                 user = form.get_user()
-                if getattr(user.profile, 'is_demo', False):
+                is_demo = False
+                if hasattr(user, 'profile'):
+                    is_demo = user.profile.is_demo
+                
+                if is_demo:
                     from django.core.management import call_command
                     call_command('setup_demo')
                     messages.info(request, "🛡️ Modo Demo Activado: Los datos se han reseteado para tu exploración. Nada de lo que crees aquí es persistente.")
@@ -60,8 +64,18 @@ def dashboard(request):
         return render(request, 'crm/landing.html', {'form': form})
     # Multi-tenant: obtain agency
     if not hasattr(request.user, 'profile'):
-        messages.error(request, "Tu usuario no tiene una agencia asignada. Contacta al soporte.")
-        return redirect('logout')
+        if request.user.is_superuser:
+            # Auto-create profile for superuser if an agency exists
+            first_agencia = Agencia.objects.first()
+            if first_agencia:
+                UserProfile.objects.create(user=request.user, agencia=first_agencia, tipo='MIEMBRO', es_admin_agencia=True)
+                messages.info(request, f"Se ha creado automáticamente un perfil para el superusuario vinculado a la agencia: {first_agencia.nombre}")
+            else:
+                messages.error(request, "Eres superusuario pero no hay ninguna Agencia creada en la base de datos. Crea una en /admin/ primero.")
+                return redirect('logout')
+        else:
+            messages.error(request, "Tu usuario no tiene una agencia asignada. Contacta al soporte.")
+            return redirect('logout')
         
     # Security Check: Clients should go to their dedicated portal, not the staff dashboard
     if request.user.profile.tipo == 'CLIENTE':
@@ -359,6 +373,9 @@ def client_portal(request):
     # Identificar caso destino para mensajes (siempre el principal)
     caso_destino_mensajes = caso_actual.caso_principal if caso_actual and caso_actual.caso_principal else caso_actual
 
+    mensajes_periodo = 0
+    puede_enviar_mensaje = True
+
     if caso_actual and config:
         # Los mensajes se cuentan contra el caso destino (el principal)
         mensajes_periodo = MensajeCliente.mensajes_periodo_count(request.user, caso_destino_mensajes)
@@ -416,7 +433,7 @@ def client_portal(request):
     documentos_entrevista = []
     if caso_actual:
         documentos_visibles = caso_actual.documentos.filter(user_can_view=True, llevar_a_entrevista=False).order_by('-fecha_subida')
-        documentos_entrevista = caso_actual.documentos.filter(user_can_view=True, llevar_a_entrevista=True).order_by('-fecha_subida')
+        documentos_entrevista = caso_actual.documentos.filter(llevar_a_entrevista=True).order_by('-fecha_subida')
         # Los mensajes siempre se cargan del caso destino (principal)
         mensajes_del_caso = caso_destino_mensajes.mensajes.all()
     else:
@@ -523,6 +540,67 @@ def case_detail(request, pk):
             messages.success(request, f'✅ Perfil del cliente "{nombre_cliente}" y todos sus datos han sido eliminados de forma permanente.')
             return redirect('dashboard')
             
+        elif action == 'update_instructions':
+            instrucciones = request.POST.get('instrucciones', '').strip()
+            caso.instrucciones_especiales = instrucciones
+            caso.save()
+            messages.success(request, '📝 Instrucciones generales actualizadas.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'add_instruction':
+            titulo = request.POST.get('titulo', '').strip()
+            descripcion = request.POST.get('descripcion', '').strip()
+            orden = request.POST.get('orden', 0)
+            if titulo:
+                InstruccionCaso.objects.create(
+                    caso=caso,
+                    titulo=titulo,
+                    descripcion=descripcion,
+                    orden=orden
+                )
+                messages.success(request, '✅ Instrucción agregada.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'edit_instruction':
+            iid = request.POST.get('instruction_id')
+            instr = get_object_or_404(InstruccionCaso, id=iid, caso=caso)
+            instr.titulo = request.POST.get('titulo', instr.titulo).strip()
+            instr.descripcion = request.POST.get('descripcion', instr.descripcion).strip()
+            instr.orden = request.POST.get('orden', instr.orden)
+            instr.save()
+            messages.success(request, '✅ Instrucción actualizada.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'delete_instruction':
+            iid = request.POST.get('instruction_id')
+            instr = get_object_or_404(InstruccionCaso, id=iid, caso=caso)
+            instr.delete()
+            messages.warning(request, '🗑️ Instrucción eliminada.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'add_instruction_from_template':
+            tid = request.POST.get('template_id')
+            if tid:
+                template = get_object_or_404(PlantillaInstruccion, id=tid, agencia=agencia)
+                current_count = caso.instrucciones_lista.count()
+                InstruccionCaso.objects.create(
+                    caso=caso,
+                    titulo=template.nombre,
+                    descripcion=template.contenido,
+                    orden=current_count + 1
+                )
+                messages.success(request, f'✅ Se ha agregado la instrucción desde la plantilla "{template.nombre}".')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'toggle_interview_doc':
+            doc_id = request.POST.get('doc_id')
+            doc = get_object_or_404(Documento, id=doc_id, caso=caso)
+            doc.llevar_a_entrevista = not doc.llevar_a_entrevista
+            doc.save()
+            estado = "marcado para entrevista" if doc.llevar_a_entrevista else "quitado de la lista de entrevista"
+            messages.success(request, f'💼 Documento "{doc.nombre_documento}" {estado}.')
+            return redirect('case_detail', pk=pk)
+
         elif action == 'assign_checklist':
             checklist_id = request.POST.get('checklist_id')
             if checklist_id:
@@ -586,6 +664,26 @@ def case_detail(request, pk):
                 messages.success(request, f'📄 Documento "{doc.nombre_documento}" subido correctamente.')
             else:
                 messages.error(request, 'Error al subir el documento. Verifica los campos.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'edit_documento':
+            doc_id = request.POST.get('doc_id')
+            doc = get_object_or_404(Documento, id=doc_id, caso=caso)
+            doc.nombre_documento = request.POST.get('nombre_documento', doc.nombre_documento).strip()
+            cat_id = request.POST.get('categoria')
+            if cat_id:
+                doc.categoria = get_object_or_404(CategoriaDocumento, id=cat_id, agencia=agencia)
+            doc.user_can_view = request.POST.get('user_can_view') == 'on'
+            doc.save()
+            messages.success(request, f'✅ Documento "{doc.nombre_documento}" actualizado.')
+            return redirect('case_detail', pk=pk)
+
+        elif action == 'delete_documento':
+            doc_id = request.POST.get('doc_id')
+            doc = get_object_or_404(Documento, id=doc_id, caso=caso)
+            nombre = doc.nombre_documento
+            doc.delete()
+            messages.warning(request, f'🗑️ Documento "{nombre}" eliminado.')
             return redirect('case_detail', pk=pk)
 
         elif action == 'add_tarea':
@@ -720,6 +818,8 @@ def case_detail(request, pk):
         'preparadores': preparadores,
         'estados': estados,
         'categorias_documentos': CategoriaDocumento.objects.filter(agencia=agencia),
+        'plantillas_instrucciones': PlantillaInstruccion.objects.filter(agencia=agencia),
+        'instrucciones_lista': caso.instrucciones_lista.all(),
     }
     return render(request, 'crm/case_detail.html', context)
 
@@ -843,7 +943,8 @@ def global_settings(request):
     # Forms from both apps
     from .forms import (
         ChecklistForm, ChecklistItemForm, CaseStatusForm, ConfigMensajesForm, 
-        PreparadorForm, TipoCasoForm, SubTipoCasoForm, CategoriaDocumentoForm
+        PreparadorForm, TipoCasoForm, SubTipoCasoForm, CategoriaDocumentoForm,
+        PlantillaInstruccionForm
     )
     from formularios.forms import FormularioForm, SeccionForm, PreguntaForm
     from formularios.models import Formulario, Seccion, Pregunta
@@ -874,7 +975,31 @@ def global_settings(request):
                 item.save()
                 messages.success(request, '✅ Ítem agregado a la plantilla.')
         
-        # --- Case Status ---
+        # --- Plantillas de Instrucciones ---
+        elif action == 'add_plantilla':
+            form = PlantillaInstruccionForm(request.POST)
+            if form.is_valid():
+                plantilla = form.save(commit=False)
+                plantilla.agencia = agencia
+                plantilla.save()
+                messages.success(request, f'✅ Plantilla "{plantilla.nombre}" creada.')
+
+        elif action == 'edit_plantilla':
+            pid = request.POST.get('plantilla_id')
+            plantilla = get_object_or_404(PlantillaInstruccion, id=pid, agencia=agencia)
+            form = PlantillaInstruccionForm(request.POST, instance=plantilla)
+            if form.is_valid():
+                form.save()
+                messages.success(request, f'✅ Plantilla "{plantilla.nombre}" actualizada.')
+
+        elif action == 'delete_plantilla':
+            pid = request.POST.get('plantilla_id')
+            plantilla = get_object_or_404(PlantillaInstruccion, id=pid, agencia=agencia)
+            nombre_p = plantilla.nombre
+            plantilla.delete()
+            messages.warning(request, f'🗑️ Plantilla "{nombre_p}" eliminada.')
+
+         # --- Case Status ---
         elif action == 'add_status':
             form = CaseStatusForm(request.POST)
             if form.is_valid():
@@ -1015,6 +1140,8 @@ def global_settings(request):
         'moldes_formularios': moldes_formularios,
         'tipos_casos': tipos_casos,
         'categorias_documentos': categorias_documentos,
+        'plantillas_instrucciones': PlantillaInstruccion.objects.filter(agencia=agencia),
+        'plantilla_form': PlantillaInstruccionForm(),
         
         # Forms for modals
         'checklist_form': ChecklistForm(),

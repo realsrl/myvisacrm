@@ -1,8 +1,18 @@
 from django import forms
 from .models import (
     Documento, MensajeCliente, ActualizacionCliente, Caso, CaseStatus, Credencial,
-    Agencia, Checklist, ChecklistItem, ConfiguracionMensajes, TipoCaso, SubTipoCaso
+    Agencia, Checklist, ChecklistItem, ConfiguracionMensajes, TipoCaso, SubTipoCaso,
+    PlantillaInstruccion
 )
+
+class PlantillaInstruccionForm(forms.ModelForm):
+    class Meta:
+        model = PlantillaInstruccion
+        fields = ['nombre', 'contenido']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Requisitos de Pasaporte'}),
+            'contenido': forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': '1. Llevar pasaporte vigente...'}),
+        }
 from django.contrib.auth.models import User
 
 class DocumentoClienteForm(forms.ModelForm):

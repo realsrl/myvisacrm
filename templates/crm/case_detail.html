@@ -316,6 +316,152 @@
   {# ── COLUMNA CENTRAL: Actividades + Formularios ───────────────────── #}
   <div class="col-xl-5 col-lg-8">
 
+    {# Instrucciones Especiales #}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+      <div class="card-header bg-white border-0 pt-3 pb-2 px-4 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0"><i class="fa-solid fa-circle-info text-warning me-2"></i> Instrucciones para el Cliente</h6>
+        {% if not esta_archivado %}
+        <div class="d-flex gap-2">
+            {% if plantillas_instrucciones %}
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-warning text-dark fw-bold rounded-pill px-3 dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fa-solid fa-file-import me-1"></i> Plantillas
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0 small" style="max-height: 300px; overflow-y: auto; min-width: 200px;">
+                    <li class="dropdown-header">Importar desde...</li>
+                    {% for p in plantillas_instrucciones %}
+                    <li>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="add_instruction_from_template">
+                            <input type="hidden" name="template_id" value="{{ p.id }}">
+                            <button type="submit" class="dropdown-item py-2">{{ p.nombre }}</button>
+                        </form>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <button class="btn btn-sm btn-warning text-dark fw-bold rounded-pill px-3" data-bs-toggle="collapse" data-bs-target="#addInstructionForm">
+                <i class="fa-solid fa-plus me-1"></i> Nueva
+            </button>
+        </div>
+        {% endif %}
+      </div>
+      <div class="card-body px-4 pb-4 pt-2">
+        {% if not esta_archivado %}
+        {# Formulario para Agregar Nueva #}
+        <div class="collapse mb-4" id="addInstructionForm">
+          <form method="post" class="p-3 border rounded bg-light small">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_instruction">
+            
+            <div class="mb-2">
+                <label class="form-label fw-bold">Título de la Instrucción</label>
+                <input type="text" name="titulo" class="form-control form-control-sm" placeholder="Ej: Preparar Documentación" required>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label fw-bold">Descripción / Pasos</label>
+              <textarea name="descripcion" rows="4" class="form-control form-control-sm" placeholder="Detalla los pasos aquí..."></textarea>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <label class="form-label fw-bold">Orden</label>
+                    <input type="number" name="orden" class="form-control form-control-sm" value="{{ instrucciones_lista.count|add:1 }}">
+                </div>
+                <div class="col-6 d-flex align-items-end">
+                    <button type="submit" class="btn btn-warning btn-sm w-100 fw-bold">Guardar</button>
+                </div>
+            </div>
+          </form>
+          <hr>
+        </div>
+        {% endif %}
+
+        <div class="instructions-list">
+          {% for instr in instrucciones_lista %}
+          <div class="mb-2">
+            <div class="d-flex align-items-center justify-content-between p-3 rounded-3 bg-light border-start border-warning border-3 cursor-pointer shadow-xs" 
+                 data-bs-toggle="collapse" data-bs-target="#collapseInstr{{ instr.id }}" style="cursor: pointer;">
+              <div class="fw-bold small text-dark"><i class="fa-solid fa-chevron-right me-2 opacity-50" style="font-size: 0.6rem;"></i> {{ instr.orden }}. {{ instr.titulo }}</div>
+              <div class="d-flex align-items-center gap-2">
+                {% if not esta_archivado %}
+                <span class="text-muted" style="font-size: 0.7rem;"><i class="fa-solid fa-expand"></i></span>
+                {% endif %}
+              </div>
+            </div>
+            
+            <div class="collapse" id="collapseInstr{{ instr.id }}">
+              <div class="p-4 bg-white border border-top-0 rounded-bottom-4 shadow-sm">
+                {% if instr.descripcion %}
+                <div class="text-muted mb-4 small" style="line-height: 1.6;">{{ instr.descripcion|linebreaks }}</div>
+                {% endif %}
+                
+                {% if not esta_archivado %}
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#modalEditInstr{{ instr.id }}">
+                            <i class="fa-solid fa-pen-to-square me-1"></i> Editar
+                        </button>
+                        <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar esta instrucción?');">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_instruction">
+                            <input type="hidden" name="instruction_id" value="{{ instr.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger px-3 rounded-pill">
+                                <i class="fa-solid fa-trash me-1"></i> Eliminar
+                            </button>
+                        </form>
+                    </div>
+                    <span class="text-muted italic" style="font-size: 0.65rem;">Orden: {{ instr.orden }}</span>
+                </div>
+
+                <!-- Modal Editar Instrucción (Mismo contenido anterior) -->
+                <div class="modal fade" id="modalEditInstr{{ instr.id }}" tabindex="-1">
+                  <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg rounded-4">
+                      <div class="modal-header border-0 pt-4 px-4"><h6 class="fw-bold m-0">Editar Instrucción</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                      <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="edit_instruction">
+                        <input type="hidden" name="instruction_id" value="{{ instr.id }}">
+                        <div class="modal-body px-4">
+                          <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">Título</label>
+                            <input type="text" name="titulo" class="form-control" value="{{ instr.titulo }}" required>
+                          </div>
+                          <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">Descripción</label>
+                            <textarea name="descripcion" rows="6" class="form-control">{{ instr.descripcion }}</textarea>
+                          </div>
+                          <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">Orden</label>
+                            <input type="number" name="orden" class="form-control" value="{{ instr.orden }}">
+                          </div>
+                        </div>
+                        <div class="modal-footer border-0 p-4 pt-0">
+                          <button type="submit" class="btn btn-primary fw-bold w-100 rounded-3 py-2">Guardar Cambios</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="text-center py-4 text-muted opacity-50 italic small">
+            <i class="fa-solid fa-list-ol fa-2x mb-2 d-block"></i>
+            Sin instrucciones personalizadas para este caso.
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
     {# Actividades #}
     <div class="card border-0 shadow-sm rounded-4 mb-4">
       <div class="card-header bg-white border-0 pt-3 pb-0 px-4 d-flex justify-content-between align-items-center">
@@ -563,8 +709,74 @@
               <div class="fw-bold text-truncate">{{ doc.nombre_documento }}</div>
               <div class="text-muted" style="font-size:0.65rem;">{{ doc.categoria.nombre|default:"Sin Categoría" }} · {{ doc.fecha_subida|date:"d/m/y" }}</div>
             </div>
-            <a href="{{ doc.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-success p-1 rounded-circle"><i
-                class="fa-solid fa-download fa-xs p-1"></i></a>
+            <div class="d-flex gap-1">
+              <a href="{{ doc.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-success p-1 rounded-circle" title="Descargar"><i
+                  class="fa-solid fa-download fa-xs p-1"></i></a>
+              
+              <form method="post" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="toggle_interview_doc">
+                <input type="hidden" name="doc_id" value="{{ doc.id }}">
+                <button type="submit" class="btn btn-sm {% if doc.llevar_a_entrevista %}btn-warning{% else %}btn-outline-warning{% endif %} p-1 rounded-circle" 
+                        title="{% if doc.llevar_a_entrevista %}Quitar de entrevista{% else %}Marcar para entrevista{% endif %}">
+                  <i class="fa-solid fa-briefcase fa-xs p-1"></i>
+                </button>
+              </form>
+
+              <div class="dropdown d-inline">
+                <button class="btn btn-sm btn-outline-secondary p-1 rounded-circle" data-bs-toggle="dropdown">
+                  <i class="fa-solid fa-ellipsis-vertical fa-xs p-1"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0 small">
+                  <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalEditDoc{{ doc.id }}"><i class="fa-solid fa-pen-to-square me-2"></i> Editar</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
+                    <form method="post" onsubmit="return confirm('¿Eliminar este documento permanentemente?');">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="delete_documento">
+                      <input type="hidden" name="doc_id" value="{{ doc.id }}">
+                      <button type="submit" class="dropdown-item text-danger"><i class="fa-solid fa-trash me-2"></i> Eliminar</button>
+                    </form>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- Modal Editar Documento -->
+              <div class="modal fade" id="modalEditDoc{{ doc.id }}" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered modal-sm">
+                  <div class="modal-content border-0 shadow-lg rounded-4">
+                    <div class="modal-header border-0 pt-4 px-4 pb-0"><h6 class="fw-bold m-0">Editar Documento</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                    <form method="post">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="edit_documento">
+                      <input type="hidden" name="doc_id" value="{{ doc.id }}">
+                      <div class="modal-body px-4">
+                        <div class="mb-3">
+                          <label class="form-label fw-bold small text-muted mb-1">Nombre</label>
+                          <input type="text" name="nombre_documento" class="form-control form-control-sm rounded-3" value="{{ doc.nombre_documento }}" required>
+                        </div>
+                        <div class="mb-3">
+                          <label class="form-label fw-bold small text-muted mb-1">Categoría</label>
+                          <select name="categoria" class="form-select form-select-sm rounded-3">
+                            <option value="">Sin Categoría</option>
+                            {% for cat in categorias_documentos %}
+                            <option value="{{ cat.id }}" {% if doc.categoria_id == cat.id %}selected{% endif %}>{{ cat.nombre }}</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                        <div class="form-check form-switch mb-1">
+                          <input class="form-check-input" type="checkbox" name="user_can_view" id="viewEdit{{ doc.id }}" {% if doc.user_can_view %}checked{% endif %}>
+                          <label class="form-check-label small" for="viewEdit{{ doc.id }}">Visible para cliente</label>
+                        </div>
+                      </div>
+                      <div class="modal-footer border-0 p-4 pt-0">
+                        <button type="submit" class="btn btn-primary btn-sm fw-bold w-100 rounded-pill">Guardar</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           {% endfor %}
         </div>
@@ -611,6 +823,29 @@
           </form>
         </div>
         {% endif %}
+      </div>
+    </div>
+ 
+    {# DOCUMENTOS PARA ENTREVISTA #}
+    <div class="card border-0 shadow-sm rounded-4 mb-4 border-start border-warning border-4">
+      <div class="card-header bg-white border-0 pt-3 pb-2 px-4 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-briefcase text-warning me-2"></i> Documentos para Entrevista</h6>
+      </div>
+      <div class="card-body px-3 pb-3">
+        <div class="d-flex flex-column gap-2">
+          {% for doc in documentos %}
+            {% if doc.llevar_a_entrevista %}
+            <div class="d-flex align-items-center p-2 rounded-3 border bg-warning bg-opacity-10 small">
+              <div class="me-2"><i class="fa-solid fa-circle-check text-warning"></i></div>
+              <div class="flex-grow-1 text-truncate pe-2">
+                <div class="fw-bold text-truncate">{{ doc.nombre_documento }}</div>
+                <div class="text-muted" style="font-size:0.65rem;">{{ doc.categoria.nombre|default:"Sin Categoría" }}</div>
+              </div>
+              <a href="{{ doc.archivo.url }}" target="_blank" class="text-warning"><i class="fa-solid fa-eye"></i></a>
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
       </div>
     </div>
 
@@ -799,6 +1034,24 @@
       }
     });
   });
+  // Selector de Plantillas de Instrucciones
+  const templateSelector = document.getElementById('templateSelector');
+  const instructionsTextArea = document.getElementById('instructionsTextArea');
+  
+  if (templateSelector && instructionsTextArea) {
+    templateSelector.addEventListener('change', function() {
+      const selectedOption = this.options[this.selectedIndex];
+      const content = selectedOption.getAttribute('data-content');
+      
+      if (content) {
+        if (instructionsTextArea.value.trim() !== "" && !confirm("¿Deseas sobrescribir las instrucciones actuales con la plantilla?")) {
+            instructionsTextArea.value += "\n" + content;
+        } else {
+            instructionsTextArea.value = content;
+        }
+      }
+    });
+  }
 </script>
 <style>
   .task-row {

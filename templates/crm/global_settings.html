@@ -105,6 +105,83 @@
                     </div>
                 </div>
             </div>
+            <!-- Plantillas de Instrucciones -->
+            <div class="card mb-4 border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0"><i class="fa-solid fa-circle-info text-warning me-2"></i> Plantillas de Instrucciones</h5>
+                    <button class="btn btn-sm btn-warning text-dark fw-bold rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalPlantilla">
+                        <i class="fa-solid fa-plus me-1"></i> Nueva Plantilla
+                    </button>
+                </div>
+                <div class="card-body p-4">
+                    <div class="accordion" id="accordionPlantillas">
+                        {% for p in plantillas_instrucciones %}
+                        <div class="accordion-item border-0 mb-2 shadow-sm rounded-3 overflow-hidden">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-light text-dark fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#pl_{{ p.id }}">
+                                    {{ p.nombre }}
+                                </button>
+                            </h2>
+                            <div id="pl_{{ p.id }}" class="accordion-collapse collapse" data-bs-parent="#accordionPlantillas">
+                                <div class="accordion-body">
+                                    <div class="bg-warning bg-opacity-10 p-3 rounded-3 mb-3 small">
+                                        {{ p.contenido|linebreaks }}
+                                    </div>
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalEditPlantilla{{ p.id }}">
+                                            <i class="fa-solid fa-pen me-1"></i> Editar
+                                        </button>
+                                        <form method="post" onsubmit="return confirm('¿Seguro que deseas eliminar esta plantilla?');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete_plantilla">
+                                            <input type="hidden" name="plantilla_id" value="{{ p.id }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                                                <i class="fa-solid fa-trash me-1"></i> Eliminar
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Edit Plantilla -->
+                        <div class="modal fade" id="modalEditPlantilla{{ p.id }}" tabindex="-1">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content border-0 shadow rounded-4">
+                                    <div class="modal-header border-0 pt-4 px-4">
+                                        <h5 class="fw-bold m-0">Editar Plantilla: {{ p.nombre }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form method="post">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="edit_plantilla">
+                                        <input type="hidden" name="plantilla_id" value="{{ p.id }}">
+                                        <div class="modal-body px-4">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold small text-muted">Nombre de la Plantilla</label>
+                                                <input type="text" name="nombre" class="form-control" value="{{ p.nombre }}" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold small text-muted">Contenido (Paso a paso)</label>
+                                                <textarea name="contenido" rows="8" class="form-control" required>{{ p.contenido }}</textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer border-0 p-4 pt-0">
+                                            <button type="submit" class="btn btn-primary fw-bold w-100 rounded-3 py-2">Guardar Cambios</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-5 text-muted opacity-50">
+                            <i class="fa-solid fa-circle-info fa-3x mb-3"></i>
+                            <p>No has creado plantillas de instrucciones aún.</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- SECCIÓN 2: Formularios y Configuración -->
@@ -532,6 +609,28 @@
                 </div>
                 <div class="modal-footer border-0 pb-4 px-4">
                     <button type="submit" class="btn btn-success fw-bold w-100 rounded-pill">Crear Subtipo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nueva Plantilla Instrucciones -->
+<div class="modal fade" id="modalPlantilla" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pt-4 px-4">
+                <h5 class="fw-bold">Nueva Plantilla de Instrucciones</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_plantilla">
+                <div class="modal-body px-4">
+                    {{ plantilla_form.as_p }}
+                </div>
+                <div class="modal-footer border-0 pb-4 px-4">
+                    <button type="submit" class="btn btn-warning fw-bold w-100 rounded-pill shadow-sm">Crear Plantilla</button>
                 </div>
             </form>
         </div>

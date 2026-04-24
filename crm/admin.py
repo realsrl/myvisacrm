@@ -2,8 +2,15 @@ from django.contrib import admin
 from .models import (
     Derivado, Credencial, Agencia, UserProfile, StripeConfig, CaseStatus, Caso, Actividad, Documento,
     ActualizacionCliente, ConfiguracionDashboard, ConfiguracionMensajes,
-    Checklist, ChecklistItem, CaseChecklist, CaseChecklistItem
+    Checklist, ChecklistItem, CaseChecklist, CaseChecklistItem,
+    PlantillaInstruccion
 )
+
+@admin.register(PlantillaInstruccion)
+class PlantillaInstruccionAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'agencia')
+    list_filter = ('agencia',)
+    search_fields = ('nombre', 'contenido')
 
 @admin.register(Agencia)
 class AgenciaAdmin(admin.ModelAdmin):
