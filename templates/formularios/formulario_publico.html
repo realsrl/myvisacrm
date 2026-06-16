@@ -161,9 +161,37 @@
         {% endif %}
     {% endfor %}
 
+    <style>
+        .autosave-indicator {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 1050;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(8px);
+            border: 1px solid #dee2e6;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .autosave-indicator.saving { color: #6c757d; }
+        .autosave-indicator.saved { color: #198754; }
+        .autosave-indicator.error { color: #dc3545; }
+        .autosave-indicator.idle { opacity: 0; }
+    </style>
+
+    <div id="autosave-indicator" class="autosave-indicator idle">
+        <i class="fa-solid fa-check me-1"></i> <span id="autosave-text">Guardado</span>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // --- Manejo de agregar instancias (existente) ---
             document.querySelectorAll('.add-instance').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const sectionId = this.dataset.sectionId;
@@ -187,6 +215,7 @@
                     }, 10);
 
                     bindRemoveButtons();
+                    watchInputs();
                 });
             });
 
@@ -196,12 +225,124 @@
                         const inst = this.closest('.instance');
                         inst.style.opacity = '0';
                         inst.style.transform = 'scale(0.95)';
-                        setTimeout(() => inst.remove(), 300);
+                        setTimeout(() => {
+                            inst.remove();
+                            markDirty();
+                        }, 300);
                     };
                 });
             }
 
             bindRemoveButtons();
+
+            // --- Auto-save ---
+            const form = document.getElementById('dynamic-form');
+            if (!form) return;
+
+            const indicator = document.getElementById('autosave-indicator');
+            const indicatorText = document.getElementById('autosave-text');
+            const SAVE_URL = "{% url 'auto_save_formulario' respuesta.id %}";
+            let dirty = false;
+            let saveTimeout = null;
+            let lastSavedData = '';
+
+            function captureFormData() {
+                const fd = new FormData(form);
+                fd.delete('csrfmiddlewaretoken');
+                fd.delete('action');
+                return fd;
+            }
+
+            function formDataToKey(fd) {
+                const parts = [];
+                for (const [k, v] of fd.entries()) {
+                    if (v instanceof File) {
+                        parts.push(k + ':' + (v.name || ''));
+                    } else {
+                        parts.push(k + ':' + v);
+                    }
+                }
+                return parts.sort().join('|');
+            }
+
+            function markDirty() {
+                const current = formDataToKey(captureFormData());
+                if (current !== lastSavedData) {
+                    dirty = true;
+                    scheduleSave();
+                }
+            }
+
+            function scheduleSave() {
+                if (saveTimeout) clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(doSave, 2000);
+            }
+
+            async function doSave() {
+                if (!dirty) return;
+                const fd = captureFormData();
+                const currentKey = formDataToKey(fd);
+
+                indicator.classList.remove('idle', 'saved', 'error');
+                indicator.classList.add('saving');
+                indicatorText.textContent = 'Guardando...';
+
+                try {
+                    const resp = await fetch(SAVE_URL, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+                            'X-Autosave-Public': '1',
+                        },
+                        body: fd,
+                    });
+                    const data = await resp.json();
+                    if (data.ok) {
+                        lastSavedData = currentKey;
+                        dirty = false;
+                        indicator.classList.remove('saving', 'error');
+                        indicator.classList.add('saved');
+                        indicatorText.textContent = 'Guardado';
+                    } else {
+                        throw new Error(data.error || 'Error al guardar');
+                    }
+                } catch (e) {
+                    indicator.classList.remove('saving', 'saved');
+                    indicator.classList.add('error');
+                    indicatorText.textContent = 'Error al guardar';
+                }
+
+                setTimeout(() => {
+                    if (!dirty && !indicator.classList.contains('saving')) {
+                        indicator.classList.add('idle');
+                    }
+                }, 3000);
+            }
+
+            function watchInputs() {
+                form.querySelectorAll('input, select, textarea').forEach(el => {
+                    el.removeEventListener('input', markDirty);
+                    el.removeEventListener('change', markDirty);
+                    el.addEventListener('input', markDirty);
+                    el.addEventListener('change', markDirty);
+                });
+            }
+
+            watchInputs();
+
+            // beforeunload warning
+            window.addEventListener('beforeunload', function(e) {
+                const current = formDataToKey(captureFormData());
+                if (current !== lastSavedData) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+
+            form.addEventListener('submit', function() {
+                lastSavedData = formDataToKey(captureFormData());
+                dirty = false;
+            });
         });
     </script>
 </body>

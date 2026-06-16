@@ -7,6 +7,7 @@ from django.http import JsonResponse, Http404
 
 from django.core.files.storage import FileSystemStorage
 from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 import os
 
 @login_required
@@ -173,3 +174,50 @@ def formulario_publico(request, token):
         'es_publico': True,
     }
     return render(request, 'formularios/formulario_publico.html', context)
+
+
+@csrf_exempt
+def auto_save_formulario(request, respuesta_id):
+    """Auto-guardado vía AJAX. No cambia estado ni redirige."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'Método no permitido'}, status=405)
+
+    respuesta_obj = get_object_or_404(RespuestaFormulario, id=respuesta_id)
+
+    # Verificar permisos
+    es_publico = request.headers.get('X-Autosave-Public') == '1'
+    if not es_publico and not request.user.is_authenticated:
+        return JsonResponse({'ok': False, 'error': 'No autorizado'}, status=403)
+
+    if not es_publico:
+        profile = getattr(request.user, 'profile', None)
+        is_owner = request.user == respuesta_obj.caso.beneficiario_principal
+        is_staff_agency = profile and profile.tipo == 'MIEMBRO' and profile.agencia == respuesta_obj.caso.agencia
+        if not (is_owner or is_staff_agency):
+            return JsonResponse({'ok': False, 'error': 'No autorizado'}, status=403)
+
+    if respuesta_obj.solo_lectura:
+        return JsonResponse({'ok': False, 'error': 'Formulario en solo lectura'}, status=400)
+
+    datos_actualizados = {}
+    fs = FileSystemStorage()
+
+    for key, file in request.FILES.items():
+        if file and hasattr(file, 'name') and file.name:
+            filename = fs.save(f'formularios/respuestas/{key}_{file.name}', file)
+            datos_actualizados[key] = fs.url(filename)
+
+    for key, value in request.POST.items():
+        if key in ['csrfmiddlewaretoken', 'action']:
+            continue
+        datos_actualizados[key] = value
+
+    datos_existentes = dict(respuesta_obj.datos)
+    datos_existentes.update(datos_actualizados)
+    respuesta_obj.datos = datos_existentes
+    respuesta_obj.save()
+
+    return JsonResponse({
+        'ok': True,
+        'saved_at': timezone.now().isoformat(),
+    })
