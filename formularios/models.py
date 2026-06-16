@@ -88,13 +88,21 @@ class RespuestaFormulario(models.Model):
     datos = models.JSONField(default=dict, help_text="Almacena todas las respuestas del usuario")
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='BORRADOR')
     ultima_actualizacion = models.DateTimeField(auto_now=True)
+    token = models.CharField(max_length=64, unique=True, blank=True, null=True, help_text="Token único para acceso público sin login")
+    cerrado = models.BooleanField(default=False, help_text="Si está activo, el formulario está cerrado y el cliente NO puede editar respuestas. Mientras esté en False, el cliente puede editar aunque haya enviado.")
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            import uuid
+            self.token = uuid.uuid4().hex + uuid.uuid4().hex
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Respuestas: {self.formulario.nombre} - {self.caso.titulo}"
 
     @property
     def solo_lectura(self):
-        return self.estado in ['ENVIADO', 'BLOQUEADO']
+        return self.estado not in ['BORRADOR']
 
     class Meta:
         verbose_name = "Respuesta de Formulario"

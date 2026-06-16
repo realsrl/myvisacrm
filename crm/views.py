@@ -532,6 +532,19 @@ def case_detail(request, pk):
                 respuesta.delete()
                 messages.success(request, f'🗑️ Formulario "{nombre}" eliminado del caso.')
             return redirect('case_detail', pk=pk)
+
+        elif action == 'toggle_cerrar_respuesta':
+            respuesta_id = request.POST.get('respuesta_id')
+            if respuesta_id:
+                respuesta = get_object_or_404(RespuestaFormulario, pk=respuesta_id, caso=caso)
+                if respuesta.estado == 'BORRADOR':
+                    respuesta.estado = 'ENVIADO'
+                    messages.success(request, f'🔒 Formulario "{respuesta.formulario.nombre}" cerrado (ENVIADO).')
+                else:
+                    respuesta.estado = 'BORRADOR'
+                    messages.success(request, f'🔓 Formulario "{respuesta.formulario.nombre}" reabierto (BORRADOR).')
+                respuesta.save()
+            return redirect('case_detail', pk=pk)
             
         elif action == 'approve_deletion':
             cliente_user = caso.beneficiario_principal

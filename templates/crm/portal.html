@@ -340,9 +340,15 @@
                     </div>
                     <p class="text-muted small mb-3">{{ resp.formulario.descripcion|truncatechars:100 }}</p>
                     <div class="d-grid">
+                      {% if resp.token %}
+                      <a href="{% url 'formulario_publico' resp.token %}" class="btn btn-sm {% if resp.solo_lectura %}btn-outline-secondary{% else %}btn-primary{% endif %} rounded-pill fw-bold">
+                        {% if resp.solo_lectura %}<i class="fa-solid fa-eye me-1"></i> Ver Respuestas{% else %}<i class="fa-solid fa-edit me-1"></i> Llenar Formulario{% endif %}
+                      </a>
+                      {% else %}
                       <a href="{% url 'formulario_detalle' resp.id %}" class="btn btn-sm {% if resp.solo_lectura %}btn-outline-secondary{% else %}btn-primary{% endif %} rounded-pill fw-bold">
                         {% if resp.solo_lectura %}<i class="fa-solid fa-eye me-1"></i> Ver Respuestas{% else %}<i class="fa-solid fa-edit me-1"></i> Llenar Formulario{% endif %}
                       </a>
+                      {% endif %}
                     </div>
                   </div>
                 </div>

@@ -36,9 +36,14 @@ class PreguntaAdmin(admin.ModelAdmin):
 
 @admin.register(RespuestaFormulario)
 class RespuestaFormularioAdmin(admin.ModelAdmin):
-    list_display = ('caso', 'formulario', 'estado', 'ultima_actualizacion')
-    list_filter = ('estado', 'formulario')
-    readonly_fields = ('ultima_actualizacion',)
+    list_display = ('caso', 'formulario', 'estado', 'cerrado', 'ultima_actualizacion', 'token_corto')
+    list_filter = ('estado', 'cerrado', 'formulario')
+    readonly_fields = ('ultima_actualizacion', 'token')
+    search_fields = ('token', 'caso__titulo', 'formulario__nombre')
+
+    def token_corto(self, obj):
+        return obj.token[:16] + '…' if obj.token else '—'
+    token_corto.short_description = 'Token'
 
 @admin.register(MensajeInterno)
 class MensajeInternoAdmin(admin.ModelAdmin):

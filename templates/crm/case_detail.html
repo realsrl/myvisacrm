@@ -577,14 +577,32 @@
               {% for resp in respuestas_formularios %}
               <tr>
                 <td class="fw-semibold">{{ resp.formulario.nombre }}</td>
-                <td><span
-                    class="badge {% if resp.estado == 'BORRADOR' %}bg-warning text-dark{% else %}bg-success{% endif %} rounded-pill">{{ resp.get_estado_display }}</span></td>
+                <td>
+                  <span class="badge {% if resp.estado == 'BORRADOR' %}bg-warning text-dark{% else %}bg-success{% endif %} rounded-pill">{{ resp.get_estado_display }}</span>
+                </td>
+                <td>
+                  <span class="small text-muted font-monospace">{{ resp.token|default:"—"|truncatechars:16 }}</span>
+                </td>
                 <td class="text-end">
                   <div class="btn-group d-flex align-items-center">
-                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 copy-form-link" data-url="{{ request.scheme }}://{{ request.get_host }}{% url 'formulario_detalle' resp.id %}" title="Copiar Enlace para el Cliente">
+                    {% if resp.token %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 copy-form-link" data-url="{{ request.scheme }}://{{ request.get_host }}{% url 'formulario_publico' resp.token %}" title="Copiar enlace público (sin login)">
                       <i class="fa-solid fa-link"></i>
                     </button>
+                    {% endif %}
                     <a href="{% url 'formulario_detalle' resp.id %}" class="btn btn-sm btn-outline-primary py-0">Leer</a>
+                    <form method="post" class="d-inline m-0 p-0 d-flex">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="toggle_cerrar_respuesta">
+                      <input type="hidden" name="respuesta_id" value="{{ resp.id }}">
+                      <button type="submit" class="btn btn-sm {% if resp.estado == 'BORRADOR' %}btn-success{% else %}btn-outline-danger{% endif %} py-0 border-end-0" title="{% if resp.estado == 'BORRADOR' %}Cerrar formulario (ENVIADO){% else %}Reabrir formulario (BORRADOR){% endif %}">
+                        {% if resp.estado == 'BORRADOR' %}
+                          <i class="fa-solid fa-lock-open"></i>
+                        {% else %}
+                          <i class="fa-solid fa-lock"></i>
+                        {% endif %}
+                      </button>
+                    </form>
                     <form method="post" class="d-inline m-0 p-0" onsubmit="return confirm('¿Seguro que deseas eliminar este formulario? Se perderán las respuestas.');">
                       {% csrf_token %}
                       <input type="hidden" name="action" value="remove_formulario">
