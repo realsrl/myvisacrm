@@ -11,7 +11,7 @@ from .models import (
 )
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm
-from .forms import DocumentoClienteForm, MensajeClienteForm, ActualizacionForm, NuevoCasoForm
+from .forms import DocumentoClienteForm, MensajeClienteForm, ActualizacionForm, NuevoCasoForm, CasoEditarForm
 from formularios.models import Formulario, RespuestaFormulario
 from django.core.paginator import Paginator
 from .constants import PLAN_DETAILS
@@ -140,6 +140,22 @@ def dashboard(request):
                 messages.info(request, f'🚫 Solicitud de eliminación para "{nombre_cliente}" fue rechazada.')
             return redirect('dashboard')
 
+        elif action == 'edit_case_dash':
+            caso_pk = request.POST.get('caso_pk')
+            caso_obj = get_object_or_404(Caso, pk=caso_pk, agencia=agencia, esta_archivado=False)
+            form = CasoEditarForm(request.POST, agencia=agencia)
+            if form.is_valid():
+                caso_obj.titulo = form.cleaned_data['titulo']
+                caso_obj.status_actual = form.cleaned_data['status_actual']
+                caso_obj.tipo = form.cleaned_data['tipo']
+                caso_obj.sub_tipo = form.cleaned_data['sub_tipo']
+                caso_obj.preparador = form.cleaned_data['preparador']
+                caso_obj.save()
+                messages.success(request, f'✅ Detalles del caso "{caso_obj.titulo}" actualizados.')
+            else:
+                messages.error(request, 'No se pudo actualizar el caso. Verifica los campos.')
+            return redirect('dashboard')
+
     # Actividades próximas a vencer (por agencia)
     config_dash = ConfiguracionDashboard.get_config(agencia)
     fecha_limite = hoy + timezone.timedelta(days=config_dash.dias_proximos_vencer)
@@ -197,6 +213,10 @@ def dashboard(request):
     # Form for creating new cases
     nuevo_caso_form = NuevoCasoForm(agencia=agencia)
 
+    # Form compartido para editar casos desde el dashboard
+    caso_editar_form = CasoEditarForm(agencia=agencia)
+    preparadores = caso_editar_form.fields['preparador'].queryset
+
     # Clientes solicitando eliminación
     clientes_eliminacion = UserProfile.objects.filter(agencia=agencia, solicita_eliminacion=True).select_related('user')
 
@@ -217,6 +237,8 @@ def dashboard(request):
         'ver_archivados': mostrar_archivados,
         'is_demo': is_demo,
         'nuevo_caso_form': nuevo_caso_form,
+        'caso_editar_form': caso_editar_form,
+        'preparadores': preparadores,
     }
     return render(request, 'crm/dashboard.html', context)
 
@@ -720,22 +742,17 @@ def case_detail(request, pk):
             return redirect('case_detail', pk=pk)
 
         elif action == 'edit_case':
-            nuevo_tipo_id = request.POST.get('tipo_id', '')
-            nuevo_sub_tipo_id = request.POST.get('sub_tipo_id', '')
-            nuevo_preparador_id = request.POST.get('preparador_id', '')
-            nuevo_status_id = request.POST.get('status_id', '')
-
-            if nuevo_tipo_id:
-                caso.tipo_id = nuevo_tipo_id
-            if nuevo_sub_tipo_id:
-                caso.sub_tipo_id = nuevo_sub_tipo_id
-            if nuevo_preparador_id:
-                caso.preparador_id = nuevo_preparador_id
-            if nuevo_status_id:
-                caso.status_actual_id = nuevo_status_id
-            
-            caso.save()
-            messages.success(request, '✅ Detalles del caso actualizados.')
+            form = CasoEditarForm(request.POST, agencia=agencia)
+            if form.is_valid():
+                caso.titulo = form.cleaned_data['titulo']
+                caso.status_actual = form.cleaned_data['status_actual']
+                caso.tipo = form.cleaned_data['tipo']
+                caso.sub_tipo = form.cleaned_data['sub_tipo']
+                caso.preparador = form.cleaned_data['preparador']
+                caso.save()
+                messages.success(request, '✅ Detalles del caso actualizados.')
+            else:
+                messages.error(request, 'No se pudo actualizar el caso. Verifica los campos.')
             return redirect('case_detail', pk=pk)
 
         elif action == 'add_derivado':
@@ -830,6 +847,13 @@ def case_detail(request, pk):
         'sub_tipos_choices': SubTipoCaso.objects.filter(tipo_caso__agencia=agencia),
         'preparadores': preparadores,
         'estados': estados,
+        'caso_editar_form': CasoEditarForm(initial={
+            'titulo': caso.titulo,
+            'status_actual': caso.status_actual,
+            'tipo': caso.tipo,
+            'sub_tipo': caso.sub_tipo,
+            'preparador': caso.preparador,
+        }, agencia=agencia),
         'categorias_documentos': CategoriaDocumento.objects.filter(agencia=agencia),
         'plantillas_instrucciones': PlantillaInstruccion.objects.filter(agencia=agencia),
         'instrucciones_lista': caso.instrucciones_lista.all(),

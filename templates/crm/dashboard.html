@@ -341,8 +341,8 @@
                   <tr {% if c.esta_archivado %}class="opacity-75"{% endif %}>
                     <td><span class="badge bg-light text-dark border">{{ c.pk|stringformat:"04d" }}</span></td>
                     <td>
-                      <div class="fw-bold text-dark">{{ c.beneficiario_principal.get_full_name|default:c.beneficiario_principal.username }}</div>
-                      <div class="text-muted" style="font-size:0.75rem;">{{ c.titulo }} · {{ c.tipo.nombre }}</div>
+                      <div class="fw-bold text-dark">{{ c.titulo }}</div>
+                      <div class="text-muted" style="font-size:0.75rem;">{{ c.beneficiario_principal.get_full_name|default:c.beneficiario_principal.username }} · {{ c.tipo.nombre }}</div>
                     </td>
                     <td>
                         <span class="text-muted small fw-semibold">{{ c.preparador.get_full_name|default:c.preparador.username }}</span>
@@ -363,6 +363,17 @@
                           <i class="fa-solid fa-eye me-1"></i> Detalle
                         </a>
                         {% if not c.esta_archivado %}
+                        <button type="button" class="btn btn-sm btn-outline-primary px-3"
+                          title="Editar"
+                          data-bs-toggle="modal" data-bs-target="#editCaseDashModal"
+                          data-caso-pk="{{ c.pk }}"
+                          data-titulo="{{ c.titulo }}"
+                          data-status="{{ c.status_actual_id }}"
+                          data-tipo="{{ c.tipo_id }}"
+                          data-subtipo="{{ c.sub_tipo_id }}"
+                          data-preparador="{{ c.preparador_id }}">
+                          <i class="fa-solid fa-pen"></i>
+                        </button>
                         <a href="{% url 'archive_case' c.pk %}" class="btn btn-sm btn-outline-danger px-3 rounded-end-pill" title="Archivar">
                           <i class="fa-solid fa-box-archive"></i>
                         </a>
@@ -409,4 +420,75 @@
     .hover-lift { transition: transform 0.2s, box-shadow 0.2s; }
     .hover-lift:hover { transform: translateY(-3px); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
 </style>
+
+{# ── MODAL EDITAR CASO DESDE DASHBOARD ── #}
+<div class="modal fade" id="editCaseDashModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow rounded-4">
+      <div class="modal-header border-0 pb-0 pt-4 px-4">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen-to-square text-primary me-2"></i> Editar Caso</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit_case_dash">
+        <input type="hidden" name="caso_pk" id="edc-caso-pk">
+        <div class="modal-body px-4">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Titular</label>
+            {{ caso_editar_form.titulo }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Status del Caso</label>
+            {{ caso_editar_form.status_actual }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Tipo de Visa</label>
+            {{ caso_editar_form.tipo }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Sub-Tipo</label>
+            {{ caso_editar_form.sub_tipo }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Preparador Asignado</label>
+            <select name="preparador" id="edc-preparador" class="form-select">
+              <option value="">Seleccionar preparador</option>
+              {% for prep in preparadores %}
+              <option value="{{ prep.id }}">{{ prep.first_name|default:prep.username }}{% if prep.first_name and prep.last_name %} {{ prep.last_name }}{% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pb-4 px-4">
+          <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary rounded-pill fw-bold px-4 shadow-sm">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('editCaseDashModal');
+    const btnTitulo = modal.querySelector('input[name="titulo"]');
+    const btnStatus = modal.querySelector('select[name="status_actual"]');
+    const btnTipo = modal.querySelector('select[name="tipo"]');
+    const btnSubTipo = modal.querySelector('select[name="sub_tipo"]');
+    const btnPreparador = document.getElementById('edc-preparador');
+    const btnCasoPk = document.getElementById('edc-caso-pk');
+
+    document.querySelectorAll('[data-bs-target="#editCaseDashModal"]').forEach(function (trig) {
+      trig.addEventListener('click', function () {
+        btnCasoPk.value = this.dataset.casoPk || '';
+        btnTitulo.value = this.dataset.titulo || '';
+        btnStatus.value = this.dataset.status || '';
+        btnTipo.value = this.dataset.tipo || '';
+        btnSubTipo.value = this.dataset.subtipo || '';
+        btnPreparador.value = this.dataset.preparador || '';
+      });
+    });
+  });
+</script>
 {% endblock %}

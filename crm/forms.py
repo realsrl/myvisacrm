@@ -154,6 +154,49 @@ class NuevoCasoForm(forms.Form):
             self.fields['sub_tipo'].queryset = SubTipoCaso.objects.filter(tipo_caso__agencia=agencia)
 
 
+class CasoEditarForm(forms.Form):
+    """Form único y reutilizable para editar el caso (titulo, status, tipo, sub_tipo, preparador)."""
+    titulo = forms.CharField(
+        max_length=200,
+        label='Titular',
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    status_actual = forms.ModelChoiceField(
+        queryset=CaseStatus.objects.none(),
+        label='Status del Caso',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    tipo = forms.ModelChoiceField(
+        queryset=TipoCaso.objects.none(),
+        label='Tipo de Visa',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    sub_tipo = forms.ModelChoiceField(
+        queryset=SubTipoCaso.objects.none(),
+        label='Sub-Tipo',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    preparador = forms.ModelChoiceField(
+        queryset=User.objects.none(),
+        label='Preparador Asignado',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+    def __init__(self, *args, agencia=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if agencia:
+            from .models import UserProfile
+            team_user_ids = UserProfile.objects.filter(
+                agencia=agencia, tipo='MIEMBRO'
+            ).values_list('user_id', flat=True)
+            self.fields['preparador'].queryset = User.objects.filter(id__in=team_user_ids)
+            self.fields['status_actual'].queryset = CaseStatus.objects.filter(
+                agencia=agencia
+            ).order_by('orden')
+            self.fields['tipo'].queryset = TipoCaso.objects.filter(agencia=agencia)
+            self.fields['sub_tipo'].queryset = SubTipoCaso.objects.filter(tipo_caso__agencia=agencia)
+
+
 class ChecklistForm(forms.ModelForm):
     class Meta:
         model = Checklist

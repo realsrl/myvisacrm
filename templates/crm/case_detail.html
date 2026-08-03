@@ -919,36 +919,26 @@
         <input type="hidden" name="action" value="edit_case">
         <div class="modal-body px-4">
           <div class="mb-3">
+            <label class="form-label fw-bold small">Titular</label>
+            {{ caso_editar_form.titulo }}
+          </div>
+          <div class="mb-3">
             <label class="form-label fw-bold small">Status del Caso</label>
-            <select name="status_id" class="form-select">
-              {% for st in estados %}
-              <option value="{{ st.id }}" {% if caso.status_actual.id == st.id %}selected{% endif %}>{{ st.nombre }}
-              </option>
-              {% endfor %}
-            </select>
+            {{ caso_editar_form.status_actual }}
           </div>
           <div class="mb-3">
             <label class="form-label fw-bold small">Tipo de Visa</label>
-            <select name="tipo_id" class="form-select">
-              {% for tc in tipos_choices %}
-              <option value="{{ tc.id }}" {% if caso.tipo_id == tc.id %}selected{% endif %}>{{ tc.nombre }}</option>
-              {% endfor %}
-            </select>
+            {{ caso_editar_form.tipo }}
           </div>
           <div class="mb-3">
             <label class="form-label fw-bold small">Sub-Tipo</label>
-            <select name="sub_tipo_id" class="form-select">
-              {% for st in sub_tipos_choices %}
-              <option value="{{ st.id }}" {% if caso.sub_tipo_id == st.id %}selected{% endif %}>{{ st.nombre }}</option>
-              {% endfor %}
-            </select>
+            {{ caso_editar_form.sub_tipo }}
           </div>
           <div class="mb-3">
             <label class="form-label fw-bold small">Preparador Asignado</label>
-            <select name="preparador_id" class="form-select">
+            <select name="preparador" class="form-select">
               {% for prep in preparadores %}
-              <option value="{{ prep.id }}" {% if caso.preparador.id == prep.id %}selected{% endif %}>{{
-                prep.get_full_name|default:prep.username }}</option>
+              <option value="{{ prep.id }}" {% if caso.preparador.id == prep.id %}selected{% endif %}>{{ prep.first_name|default:prep.username }}{% if prep.first_name and prep.last_name %} {{ prep.last_name }}{% endif %}</option>
               {% endfor %}
             </select>
           </div>
